@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kompetenzkumpel</title>
+    <!-- Lokale Bibliotheken für PDF-Export. -->
+    <script src="./html2canvas.min.js"></script>
+    <script src="./jspdf.umd.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div id="bannerOuterContainer">
+        <div id="bannerContainer">
+            <img id="bannerImage" src="kompetenzbanner.jpg" alt="Kompetenzkumpel Banner">
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="main-grid">
+            <!-- Linke Spalte: Steuerung -->
+            <div class="grid-col-span-1 space-y-6">
+                <div class="card">
+                    <h2 class="text-xl font-bold card-header">1. Raster definieren</h2>
+
+                    <div>
+                        <label for="kriterien-input" class="form-label text-sm">Kriterien</label>
+                        <p class="text-xs form-description">Geben Sie ein Kriterium ein und drücken Sie die Eingabetaste.</p>
+                        <div id="kriterien-container" class="tag-input-container">
+                            <input type="text" id="kriterien-input" placeholder="z.B. Teamfähigkeit..." class="tag-input">
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 1rem;">
+                        <label for="abstufungen-input" class="form-label text-sm">Abstufungen</label>
+                        <p class="text-xs form-description">Geben Sie eine Abstufung ein und drücken Sie die Eingabetaste.</p>
+                        <div id="abstufungen-container" class="tag-input-container">
+                             <input type="text" id="abstufungen-input" placeholder="z.B. Anfänger..." class="tag-input">
+                        </div>
+                    </div>
+
+                    <button id="raster-erstellen-btn" class="btn btn-blue" style="margin-top: 1.5rem;">
+                        Raster erstellen / aktualisieren
+                    </button>
+                </div>
+
+                <div class="card">
+                    <h2 class="text-xl font-bold card-header">2. Schüler eingeben</h2>
+                    <label for="schueler-input" class="form-label text-sm">Schülernamen</label>
+                    <p class="text-xs form-description">Namen durch Komma oder Zeilenumbruch trennen.</p>
+                    <textarea id="schueler-input" rows="4" class="form-textarea" placeholder="Anna, Ben, Clara..."></textarea>
+                    <button id="schueler-anlegen-btn" class="btn btn-green" style="margin-top: 1rem;">
+                        Schülerliste anlegen
+                    </button>
+                </div>
+
+                <div class="card">
+                    <h2 class="text-xl font-bold card-header">3. Zwischenstand sichern</h2>
+                    <p class="text-sm text-gray-600" style="margin-bottom: 1rem;">Speichern oder laden Sie den kompletten Bearbeitungsstand.</p>
+                    <div class="space-y-3">
+                        <button id="save-state-btn" class="btn btn-indigo">
+                            Stand speichern (JSON)
+                        </button>
+                        <button id="load-state-btn" class="btn btn-gray">
+                            Stand laden (JSON)
+                        </button>
+                        <input type="file" id="load-state-input" class="hidden" accept=".json">
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="text-xl font-bold card-header">4. Exportieren</h2>
+                    <p class="text-sm text-gray-600" style="margin-bottom: 1rem;">Exportieren Sie die Auswertungen aller Schüler als gesammelte PDF-Datei.</p>
+                    <button id="export-pdf-btn" class="btn btn-dark-gray">
+                        Alle Schüler als PDF speichern
+                    </button>
+                </div>
+            </div>
+
+            <!-- Rechte Spalte: Raster und Auswertung -->
+            <div class="grid-col-span-2 space-y-8">
+                <div id="schueler-tabs-container" class="flex flex-wrap gap-2">
+                    <!-- Schüler-Tabs werden hier eingefügt -->
+                </div>
+
+                <div id="raster-platzhalter" class="card placeholder">
+                    <p class="text-gray-500 text-center">Definieren Sie Kriterien & Abstufungen und legen Sie eine Schülerliste an, um hier das interaktive Raster anzuzeigen.</p>
+                </div>
+                <div id="raster-container" class="card raster-container hidden">
+                    <h3 id="raster-titel" class="text-2xl font-bold" style="margin-bottom: 1rem;"></h3>
+                    <table id="kompetenz-raster" class="kompetenz-raster">
+                        <!-- Raster wird hier dynamisch erstellt -->
+                    </table>
+                </div>
+
+                <div id="auswertung-platzhalter" class="card placeholder">
+                     <p class="text-gray-500 text-center">Markieren Sie Felder im Raster, um hier die visuelle Auswertung zu sehen.</p>
+                </div>
+                <div id="auswertung-container" class="card hidden">
+                    <h3 id="auswertung-titel" class="text-2xl font-bold" style="margin-bottom: 1rem;">Visuelle Auswertung</h3>
+                    <div id="auswertung-chart" class="space-y-4">
+                        <!-- Auswertungs-Balken werden hier eingefügt -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for notifications -->
+    <div id="notification-modal" class="modal-overlay hidden">
+      <div class="modal-container">
+        <div class="modal-content-wrapper">
+          <h3 id="modal-title" class="modal-title"></h3>
+          <div class="modal-content">
+            <p id="modal-content-text" class="modal-text"></p>
+          </div>
+          <div class="modal-actions">
+            <button id="modal-close-btn" class="modal-close-btn">
+              OK
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+
+</body>
+</html>
