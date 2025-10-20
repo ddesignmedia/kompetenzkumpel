@@ -1,7 +1,22 @@
 document.addEventListener('DOMContentLoaded', function () {
     // State Management
-    let kriterien = ['Fachwissen', 'Methodik', 'Sozialkompetenz'];
-    let abstufungen = ['nicht erfüllt', 'teilweise erfüllt', 'voll erfüllt', 'übertroffen'];
+    let kriterien = [
+    "Aufmerksames Zuhören",
+    "Konstruktive Beiträge",
+    "Kontinuierliche Beteiligung",
+    "Sorgfältige Arbeitsweise",
+    "Selbstständiges Arbeiten",
+    "Respektvoller Umgang",
+    "Tabletnutzung sinnvoll",
+    "Arbeitsaufträge erfüllt"
+  ];
+    let abstufungen = [
+    "Herausragend",
+    "Deutlich ausgeprägt",
+    "Erkennbar",
+    "Ansatzweise erkennbar",
+    "Noch nicht erkennbar"
+  ];
     let schuelerNamen = [];
     let bewertungen = {}; // { 'Anna': { bewertung: [null, 1, 2] }, ... }
     let aktuellerSchuelerName = null;
