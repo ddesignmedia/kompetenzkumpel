@@ -240,18 +240,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
         kompetenzRaster.querySelectorAll('.grid-cell').forEach(cell => {
             cell.classList.remove('selected');
+            // Remove all possible color classes
+            for (let i = 0; i < abstufungen.length; i++) {
+                cell.classList.remove(`selected-color-${i}`);
+            }
         });
 
         aktuelleBewertung.forEach((aIndex, kIndex) => {
             if (aIndex !== null) {
                 const cell = kompetenzRaster.querySelector(`[data-kriterium-index="${kIndex}"][data-abstufung-index="${aIndex}"]`);
-                if(cell) cell.classList.add('selected');
+                if (cell) {
+                    cell.classList.add('selected');
+                    cell.classList.add(`selected-color-${aIndex}`);
+                }
             }
         });
     }
 
     // --- Auswertungs-Logik ---
-    const farben = ['#fecaca', '#fde68a', '#a7f3d0', '#93c5fd', '#c4b5fd', '#f9a8d4'];
+    const farben = ['#22c55e', '#38bdf8', '#facc15', '#f97316', '#ef4444'];
 
     function updateAuswertung() {
         if (!aktuellerSchuelerName || !bewertungen[aktuellerSchuelerName] || bewertungen[aktuellerSchuelerName].bewertung.every(b => b === null)) {

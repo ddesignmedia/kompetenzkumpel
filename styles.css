@@ -252,11 +252,15 @@ h1, h2, h3, h4, h5, h6 {
     background-color: #d1fae5; /* Light green on hover */
 }
 .grid-cell.selected {
-    background-color: #34d399; /* Green when selected */
     color: white;
     font-weight: 600;
     transform: scale(1.05);
 }
+.grid-cell.selected-color-0 { background-color: #22c55e; } /* Herausragend: grün */
+.grid-cell.selected-color-1 { background-color: #38bdf8; } /* Deutlich ausgeprägt: hellblau */
+.grid-cell.selected-color-2 { background-color: #facc15; } /* Erkennbar: gelb */
+.grid-cell.selected-color-3 { background-color: #f97316; } /* Ansatzweise erkennbar: orange */
+.grid-cell.selected-color-4 { background-color: #ef4444; } /* Noch nicht erkennbar: rot */
 .schueler-tab {
     padding: 0.5rem 1rem;
     border: 1px solid var(--color-gray-300);
