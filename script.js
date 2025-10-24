@@ -46,6 +46,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const loadStateBtn = document.getElementById('load-state-btn');
     const loadStateInput = document.getElementById('load-state-input');
     const exportPdfBtn = document.getElementById('export-pdf-btn');
+    const saveVorlageBtn = document.getElementById('save-vorlage-btn');
+    const loadVorlageBtn = document.getElementById('load-vorlage-btn');
 
     // Modal elements
     const modal = document.getElementById('notification-modal');
@@ -445,4 +447,53 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initial render on load
     renderAllFromState();
+
+    // --- Vorlagen-Logik ---
+    saveVorlageBtn.addEventListener('click', () => {
+        if (kriterien.length === 0 || abstufungen.length === 0) {
+            showNotification('Hinweis', 'Es sind keine Kriterien oder Abstufungen zum Speichern vorhanden.');
+            return;
+        }
+        const vorlage = { kriterien, abstufungen };
+        const dataStr = JSON.stringify(vorlage, null, 2);
+        const dataBlob = new Blob([dataStr], {type: 'application/json'});
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.download = 'vorlage.json';
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
+    });
+
+    loadVorlageBtn.addEventListener('click', async () => {
+        try {
+            const response = await fetch('./Vorlage/vorlage.json');
+            if (!response.ok) {
+                throw new Error('Netzwerkantwort war nicht OK');
+            }
+            const data = await response.json();
+
+            if (data.kriterien && data.abstufungen) {
+                kriterien.length = 0;
+                abstufungen.length = 0;
+                Array.prototype.push.apply(kriterien, data.kriterien);
+                Array.prototype.push.apply(abstufungen, data.abstufungen);
+
+                renderKriterienTags();
+                renderAbstufungenTags();
+
+                // Optional: Raster direkt aktualisieren, falls Schüler vorhanden
+                if (aktuellerSchuelerName) {
+                    rasterErstellenBtn.click();
+                }
+
+                showNotification('Erfolg', 'Die Vorlage wurde erfolgreich geladen.');
+            } else {
+                showNotification('Fehler', 'Die `vorlage.json` hat ein ungültiges Format.');
+            }
+        } catch (error) {
+            console.error('Fehler beim Laden der Vorlage:', error);
+            showNotification('Fehler', 'Die `vorlage.json` konnte nicht im Ordner "/Vorlage/" gefunden oder gelesen werden. Stellen Sie sicher, dass die Datei existiert und korrekt formatiert ist.');
+        }
+    });
 });
