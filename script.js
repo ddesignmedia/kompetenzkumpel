@@ -343,7 +343,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const link = document.createElement('a');
         link.download = `kompetenzraster_stand_${new Date().toISOString().slice(0,10)}.json`;
         link.href = url;
+        document.body.appendChild(link); // Append to body to ensure visibility
         link.click();
+        document.body.removeChild(link); // Clean up
         URL.revokeObjectURL(url);
     });
 
@@ -461,7 +463,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const link = document.createElement('a');
         link.download = 'vorlage.json';
         link.href = url;
+        document.body.appendChild(link); // Append to body to ensure visibility
         link.click();
+        document.body.removeChild(link); // Clean up
         URL.revokeObjectURL(url);
     });
 
