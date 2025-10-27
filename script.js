@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let schuelerNamen = [];
     let bewertungen = {}; // { 'Anna': { bewertung: [null, 1, 2] }, ... }
     let aktuellerSchuelerName = null;
+    let geladeneVorlagen = {};
 
     // DOM-Elemente
     const kriterienContainer = document.getElementById('kriterien-container');
@@ -48,6 +49,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const exportPdfBtn = document.getElementById('export-pdf-btn');
     const saveVorlageBtn = document.getElementById('save-vorlage-btn');
     const loadVorlageBtn = document.getElementById('load-vorlage-btn');
+    const vorlagenSelect = document.getElementById('vorlagen-select');
 
     // Modal elements
     const modal = document.getElementById('notification-modal');
@@ -392,50 +394,71 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         exportPdfBtn.disabled = true;
-        exportPdfBtn.textContent = 'Exportiere...';
-
         const originalSchueler = aktuellerSchuelerName;
-        const doc = new jsPDF({
-            orientation: 'p',
-            unit: 'mm',
-            format: 'a4'
-        });
+        const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 15;
+        const contentWidth = pageWidth - (margin * 2);
 
-        for (const [index, name] of schuelerNamen.entries()) {
-            if (index > 0) doc.addPage();
+        for (const [schuelerIndex, name] of schuelerNamen.entries()) {
+            exportPdfBtn.textContent = `Exportiere Schüler ${schuelerIndex + 1}/${schuelerNamen.length}: ${name}`;
+
+            if (schuelerIndex > 0) doc.addPage();
 
             aktuellerSchuelerName = name;
-            // We need to render the evaluation to be able to capture it
             renderSchuelerTabs();
             erstelleRaster();
             updateAuswertung();
-            await new Promise(resolve => setTimeout(resolve, 100)); // Wait for render
+            await new Promise(resolve => setTimeout(resolve, 100));
 
             const hatBewertung = bewertungen[name] && !bewertungen[name].bewertung.every(b => b === null);
-
-            if (hatBewertung && !auswertungContainer.classList.contains('hidden')) {
-                 // Temporarily make the container visible for capturing if it's hidden
-                auswertungContainer.style.display = 'block';
-                const canvas = await html2canvas(auswertungContainer, { scale: 2 });
-                auswertungContainer.style.display = ''; // Reset display style
-
-                const imgData = canvas.toDataURL('image/png');
-                const imgProps = doc.getImageProperties(imgData);
-                const pdfWidth = doc.internal.pageSize.getWidth();
-                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-                const margin = 15;
-                doc.addImage(imgData, 'PNG', margin, margin, pdfWidth - (margin * 2), pdfHeight > 0 ? pdfHeight : 0);
-            } else {
+            if (!hatBewertung || auswertungContainer.classList.contains('hidden')) {
                 doc.setFontSize(18);
-                doc.text(`Auswertung für: ${name}`, 15, 20);
+                doc.text(`Auswertung für: ${name}`, margin, 20);
                 doc.setFontSize(12);
-                doc.text('Für diesen Schüler/diese Schülerin liegt noch keine Bewertung vor.', 15, 30);
+                doc.text('Für diesen Schüler/diese Schülerin liegt noch keine Bewertung vor.', margin, 30);
+                continue;
             }
+
+            const tempContainer = document.createElement('div');
+            tempContainer.style.position = 'absolute';
+            tempContainer.style.left = '-9999px';
+            tempContainer.style.width = '800px';
+            document.body.appendChild(tempContainer);
+
+            const titleClone = auswertungTitel.cloneNode(true);
+            tempContainer.appendChild(titleClone);
+
+            const allItems = Array.from(auswertungChart.children);
+            let yPos = margin + 10;
+
+            for (const item of allItems) {
+                 tempContainer.appendChild(item.cloneNode(true));
+            }
+
+            const canvas = await html2canvas(tempContainer, { scale: 2, y: 0, height: tempContainer.scrollHeight });
+            const imgData = canvas.toDataURL('image/jpeg', 0.8);
+            const imgHeight = (canvas.height * contentWidth) / canvas.width;
+
+            let heightLeft = imgHeight;
+            let position = 0;
+
+            doc.addImage(imgData, 'JPEG', margin, margin, contentWidth, imgHeight);
+            heightLeft -= (pageHeight - (margin*2));
+
+            while (heightLeft > 0) {
+                position -= (pageHeight - (margin*2));
+                doc.addPage();
+                doc.addImage(imgData, 'JPEG', margin, position, contentWidth, imgHeight);
+                heightLeft -= (pageHeight - (margin*2));
+            }
+
+            document.body.removeChild(tempContainer);
         }
 
         doc.save(`Kompetenzraster_Alle_Schueler_${new Date().toISOString().slice(0,10)}.pdf`);
 
-        // Restore original state
         aktuellerSchuelerName = originalSchueler;
         renderSchuelerTabs();
         erstelleRaster();
@@ -469,35 +492,51 @@ document.addEventListener('DOMContentLoaded', function () {
         URL.revokeObjectURL(url);
     });
 
-    loadVorlageBtn.addEventListener('click', async () => {
+    async function ladeVorlagen() {
         try {
-            const response = await fetch('./Vorlage/vorlage.json');
+            const response = await fetch('./Vorlage/templates.json');
             if (!response.ok) {
-                throw new Error('Netzwerkantwort war nicht OK');
+                throw new Error('Vorlagendatei nicht gefunden.');
             }
-            const data = await response.json();
+            geladeneVorlagen = await response.json();
 
-            if (data.kriterien && data.abstufungen) {
-                kriterien.length = 0;
-                abstufungen.length = 0;
-                Array.prototype.push.apply(kriterien, data.kriterien);
-                Array.prototype.push.apply(abstufungen, data.abstufungen);
-
-                renderKriterienTags();
-                renderAbstufungenTags();
-
-                // Optional: Raster direkt aktualisieren, falls Schüler vorhanden
-                if (aktuellerSchuelerName) {
-                    rasterErstellenBtn.click();
-                }
-
-                showNotification('Erfolg', 'Die Vorlage wurde erfolgreich geladen.');
-            } else {
-                showNotification('Fehler', 'Die `vorlage.json` hat ein ungültiges Format.');
-            }
+            vorlagenSelect.innerHTML = '';
+            Object.keys(geladeneVorlagen).forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                vorlagenSelect.appendChild(option);
+            });
         } catch (error) {
-            console.error('Fehler beim Laden der Vorlage:', error);
-            showNotification('Fehler', 'Die `vorlage.json` konnte nicht im Ordner "/Vorlage/" gefunden oder gelesen werden. Stellen Sie sicher, dass die Datei existiert und korrekt formatiert ist.');
+            console.error('Fehler beim Laden der Vorlagen:', error);
+            showNotification('Fehler', 'Die Vorlagendatei (`templates.json`) konnte im Ordner "/Vorlage/" nicht gefunden werden.');
         }
+    }
+
+    loadVorlageBtn.addEventListener('click', () => {
+        const ausgewaehlterName = vorlagenSelect.value;
+        if (!ausgewaehlterName || !geladeneVorlagen[ausgewaehlterName]) {
+            showNotification('Hinweis', 'Bitte wählen Sie eine gültige Vorlage aus.');
+            return;
+        }
+
+        const vorlage = geladeneVorlagen[ausgewaehlterName];
+
+        kriterien.length = 0;
+        abstufungen.length = 0;
+        Array.prototype.push.apply(kriterien, vorlage.kriterien);
+        Array.prototype.push.apply(abstufungen, vorlage.abstufungen);
+
+        renderKriterienTags();
+        renderAbstufungenTags();
+
+        if (aktuellerSchuelerName) {
+            rasterErstellenBtn.click();
+        }
+
+        showNotification('Erfolg', `Die Vorlage "${ausgewaehlterName}" wurde erfolgreich geladen.`);
     });
+
+    // --- Initialisierung ---
+    ladeVorlagen();
 });

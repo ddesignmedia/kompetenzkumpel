@@ -46,13 +46,16 @@
 
                     <div class="space-y-3" style="margin-top: 1.5rem; border-top: 1px solid var(--color-gray-200); padding-top: 1.5rem;">
                         <h3 class="text-lg font-semibold card-header" style="padding-bottom: 0.5rem; border-bottom: none; margin-bottom: 0;">Raster-Vorlagen</h3>
-                         <p class="text-xs form-description" style="margin-bottom: 1rem;">Speichern Sie das aktuelle Raster als `vorlage.json` oder laden Sie eine Vorlage vom Server.</p>
+                         <p class="text-xs form-description" style="margin-bottom: 1rem;">Speichern Sie das aktuelle Raster als `vorlage.json` oder wählen Sie eine Vorlage aus der Liste und laden Sie sie.</p>
                         <button id="save-vorlage-btn" class="btn btn-gray">
                             Vorlage speichern (vorlage.json)
                         </button>
-                        <button id="load-vorlage-btn" class="btn btn-gray">
-                            Vorlage vom Server laden
-                        </button>
+                        <div class="flex items-center space-x-2">
+                            <select id="vorlagen-select" class="form-select"></select>
+                            <button id="load-vorlage-btn" class="btn btn-gray">
+                                Vorlage laden
+                            </button>
+                        </div>
                     </div>
                 </div>
 
