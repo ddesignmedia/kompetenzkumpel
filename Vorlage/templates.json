@@ -1,0 +1,36 @@
+{
+  "Vorlage für Verhalten": {
+    "kriterien": [
+      "Aufmerksames Zuhören",
+      "Konstruktive Beiträge",
+      "Kontinuierliche Beteiligung",
+      "Sorgfältige Arbeitsweise",
+      "Selbstständiges Arbeiten",
+      "Respektvoller Umgang",
+      "Tabletnutzung sinnvoll",
+      "Arbeitsaufträge erfüllt"
+    ],
+    "abstufungen": [
+      "Herausragend",
+      "Deutlich ausgeprägt",
+      "Erkennbar",
+      "Ansatzweise erkennbar",
+      "Noch nicht erkennbar"
+    ]
+  },
+  "Vorlage für Fächer": {
+    "kriterien": [
+      "Mathematik",
+      "Deutsch",
+      "Englisch",
+      "Kunst"
+    ],
+    "abstufungen": [
+      "Sehr Gut",
+      "Gut",
+      "Befriedigend",
+      "Ausreichend",
+      "Mangelhaft"
+    ]
+  }
+}
