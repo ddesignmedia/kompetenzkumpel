@@ -131,7 +131,37 @@ h1, h2, h3, h4, h5, h6 {
     padding-bottom: 0.5rem;
     border-bottom: 1px solid var(--color-gray-200);
     margin-bottom: 1rem;
+    cursor: pointer;
+    position: relative;
 }
+.card-header::after {
+    content: '−'; /* Minus sign for expanded */
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.5rem;
+    color: var(--color-gray-400);
+}
+.card-header.collapsed::after {
+    content: '+'; /* Plus sign for collapsed */
+}
+
+.card-content {
+    transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+    max-height: 2000px; /* Large enough for any content */
+    overflow: hidden;
+    opacity: 1;
+}
+
+.card-content.hidden {
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
 
 /* --- Formularelemente & Buttons --- */
 .form-label {
@@ -241,6 +271,31 @@ h1, h2, h3, h4, h5, h6 {
     min-width: 120px;
     background-color: transparent;
 }
+.combo-box {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.combo-box .form-select {
+    flex: 1 1 auto;
+}
+.combo-box .tag-input {
+    flex: 1 1 auto;
+    border: 1px solid var(--color-gray-300);
+    border-radius: var(--rounded-lg);
+}
+.combo-btn {
+    width: auto;
+    padding: 0.5rem;
+    line-height: 1;
+    font-size: 1.25rem;
+}
+
+#schueler-container {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
 
 /* --- Raster & Tabs --- */
 .placeholder {
