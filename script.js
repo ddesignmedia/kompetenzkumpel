@@ -17,12 +17,15 @@ document.addEventListener('DOMContentLoaded', function () {
     "Ansatzweise erkennbar",
     "Noch nicht erkennbar"
   ];
-    let schuelerNamen = [];
-    let bewertungen = {}; // { 'Anna': { bewertung: [null, 1, 2] }, ... }
+    let klassen = {}; // { "6a": { "Mathe": { schueler: ["Anna", "Ben"], bewertungen: { "Anna": [...] } } } }
+    let aktuelleKlasse = null;
+    let aktuellesFach = null;
     let aktuellerSchuelerName = null;
     let geladeneVorlagen = {};
 
     // DOM-Elemente
+    const klasseInput = document.getElementById('klasse-input');
+    const fachInput = document.getElementById('fach-input');
     const kriterienContainer = document.getElementById('kriterien-container');
     const kriterienInput = document.getElementById('kriterien-input');
     const abstufungenContainer = document.getElementById('abstufungen-container');
@@ -31,6 +34,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const schuelerInput = document.getElementById('schueler-input');
     const schuelerAnlegenBtn = document.getElementById('schueler-anlegen-btn');
+    const klassenTabsContainer = document.getElementById('klassen-tabs-container');
+    const faecherTabsContainer = document.getElementById('faecher-tabs-container');
     const schuelerTabsContainer = document.getElementById('schueler-tabs-container');
 
     const rasterPlatzhalter = document.getElementById('raster-platzhalter');
@@ -111,33 +116,98 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Schüler-Logik ---
     schuelerAnlegenBtn.addEventListener('click', () => {
+        const klasseName = klasseInput.value.trim();
+        const fachName = fachInput.value.trim();
         const names = schuelerInput.value
             .split(/[\n,]+/)
             .map(name => name.trim())
             .filter(name => name.length > 0);
 
-        if (names.length === 0) {
-            showNotification('Eingabefehler', 'Bitte geben Sie mindestens einen Schülernamen ein.');
+        if (!klasseName || !fachName || names.length === 0) {
+            showNotification('Eingabefehler', 'Bitte geben Sie eine Klasse, ein Fach und mindestens einen Schülernamen ein.');
             return;
         }
 
-        schuelerNamen = [...new Set(names)]; // Remove duplicates
-        bewertungen = {};
-        schuelerNamen.forEach(name => {
-            bewertungen[name] = {
+        if (!klassen[klasseName]) {
+            klassen[klasseName] = {};
+        }
+        if (!klassen[klasseName][fachName]) {
+            klassen[klasseName][fachName] = { schueler: [], bewertungen: {} };
+        }
+
+        const fach = klassen[klasseName][fachName];
+        const neueSchueler = names.filter(name => !fach.schueler.includes(name));
+        fach.schueler = [...fach.schueler, ...neueSchueler].sort();
+
+        neueSchueler.forEach(name => {
+            fach.bewertungen[name] = {
                 bewertung: Array(kriterien.length).fill(null)
             };
         });
 
-        aktuellerSchuelerName = schuelerNamen[0];
+        aktuelleKlasse = klasseName;
+        aktuellesFach = fachName;
+        aktuellerSchuelerName = fach.schueler[0];
+
+        renderKlassenTabs();
+        renderFaecherTabs();
         renderSchuelerTabs();
         erstelleRaster();
         updateAuswertung();
     });
 
+    function renderKlassenTabs() {
+        klassenTabsContainer.innerHTML = '';
+        Object.keys(klassen).sort().forEach(name => {
+            const tab = document.createElement('button');
+            tab.textContent = name;
+            tab.className = 'schueler-tab'; // Wiederverwendung der Stile
+            if (name === aktuelleKlasse) {
+                tab.classList.add('active');
+            }
+            tab.onclick = () => {
+                aktuelleKlasse = name;
+                aktuellesFach = Object.keys(klassen[aktuelleKlasse])[0] || null;
+                aktuellerSchuelerName = aktuellesFach ? klassen[aktuelleKlasse][aktuellesFach].schueler[0] || null : null;
+                renderKlassenTabs();
+                renderFaecherTabs();
+                renderSchuelerTabs();
+                erstelleRaster();
+                updateAuswertung();
+            };
+            klassenTabsContainer.appendChild(tab);
+        });
+    }
+
+    function renderFaecherTabs() {
+        faecherTabsContainer.innerHTML = '';
+        if (!aktuelleKlasse || !klassen[aktuelleKlasse]) return;
+
+        Object.keys(klassen[aktuelleKlasse]).sort().forEach(name => {
+            const tab = document.createElement('button');
+            tab.textContent = name;
+            tab.className = 'schueler-tab';
+            if (name === aktuellesFach) {
+                tab.classList.add('active');
+            }
+            tab.onclick = () => {
+                aktuellesFach = name;
+                aktuellerSchuelerName = klassen[aktuelleKlasse][aktuellesFach].schueler[0] || null;
+                renderFaecherTabs();
+                renderSchuelerTabs();
+                erstelleRaster();
+                updateAuswertung();
+            };
+            faecherTabsContainer.appendChild(tab);
+        });
+    }
+
     function renderSchuelerTabs() {
         schuelerTabsContainer.innerHTML = '';
-        schuelerNamen.forEach(name => {
+        if (!aktuelleKlasse || !aktuellesFach) return;
+
+        const schueler = klassen[aktuelleKlasse][aktuellesFach].schueler;
+        schueler.forEach(name => {
             const tab = document.createElement('button');
             tab.textContent = name;
             tab.className = 'schueler-tab';
@@ -182,14 +252,14 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     function erstelleRaster() {
-        if (kriterien.length === 0 || abstufungen.length === 0 || !aktuellerSchuelerName) {
+        if (kriterien.length === 0 || abstufungen.length === 0 || !aktuelleKlasse || !aktuellesFach || !aktuellerSchuelerName) {
             rasterContainer.classList.add('hidden');
             rasterPlatzhalter.classList.remove('hidden');
             return;
         }
         rasterPlatzhalter.classList.add('hidden');
         rasterContainer.classList.remove('hidden');
-        rasterTitel.textContent = `Bewertungsraster für: ${aktuellerSchuelerName}`;
+        rasterTitel.textContent = `Bewertungsraster für: ${aktuellerSchuelerName} (${aktuelleKlasse} - ${aktuellesFach})`;
 
         kompetenzRaster.innerHTML = '';
 
@@ -220,11 +290,11 @@ document.addEventListener('DOMContentLoaded', function () {
     function addGridCellListeners() {
         kompetenzRaster.querySelectorAll('.grid-cell').forEach(cell => {
             cell.addEventListener('click', () => {
-                if (!aktuellerSchuelerName) return;
+                if (!aktuelleKlasse || !aktuellesFach || !aktuellerSchuelerName) return;
 
                 const kIndex = parseInt(cell.dataset.kriteriumIndex);
                 const aIndex = parseInt(cell.dataset.abstufungIndex);
-                const aktuelleBewertung = bewertungen[aktuellerSchuelerName].bewertung;
+                const aktuelleBewertung = klassen[aktuelleKlasse][aktuellesFach].bewertungen[aktuellerSchuelerName].bewertung;
 
                 if (aktuelleBewertung[kIndex] === aIndex) {
                    aktuelleBewertung[kIndex] = null;
@@ -239,8 +309,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateRasterAnsicht() {
-        if (!aktuellerSchuelerName || !bewertungen[aktuellerSchuelerName]) return;
-        const aktuelleBewertung = bewertungen[aktuellerSchuelerName].bewertung;
+        if (!aktuelleKlasse || !aktuellesFach || !aktuellerSchuelerName || !klassen[aktuelleKlasse][aktuellesFach].bewertungen[aktuellerSchuelerName]) return;
+        const aktuelleBewertung = klassen[aktuelleKlasse][aktuellesFach].bewertungen[aktuellerSchuelerName].bewertung;
 
         kompetenzRaster.querySelectorAll('.grid-cell').forEach(cell => {
             cell.classList.remove('selected');
@@ -265,7 +335,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const farben = ['#22c55e', '#38bdf8', '#facc15', '#f97316', '#ef4444'];
 
     function updateAuswertung() {
-        if (!aktuellerSchuelerName || !bewertungen[aktuellerSchuelerName] || bewertungen[aktuellerSchuelerName].bewertung.every(b => b === null)) {
+        if (!aktuelleKlasse || !aktuellesFach || !aktuellerSchuelerName || !klassen[aktuelleKlasse][aktuellesFach].bewertungen[aktuellerSchuelerName] || klassen[aktuelleKlasse][aktuellesFach].bewertungen[aktuellerSchuelerName].bewertung.every(b => b === null)) {
             auswertungContainer.classList.add('hidden');
             auswertungPlatzhalter.classList.remove('hidden');
             return;
@@ -275,7 +345,7 @@ document.addEventListener('DOMContentLoaded', function () {
         auswertungTitel.textContent = `Visuelle Auswertung für: ${aktuellerSchuelerName}`;
         auswertungChart.innerHTML = '';
 
-        const aktuelleBewertung = bewertungen[aktuellerSchuelerName].bewertung;
+        const aktuelleBewertung = klassen[aktuelleKlasse][aktuellesFach].bewertungen[aktuellerSchuelerName].bewertung;
 
         kriterien.forEach((kriterium, kIndex) => {
             const bewertungIndex = aktuelleBewertung[kIndex];
@@ -320,34 +390,40 @@ document.addEventListener('DOMContentLoaded', function () {
     function renderAllFromState() {
         renderKriterienTags();
         renderAbstufungenTags();
-        schuelerInput.value = schuelerNamen.join('\n');
 
-        if (schuelerNamen.length > 0) {
-            aktuellerSchuelerName = schuelerNamen.includes(aktuellerSchuelerName) ? aktuellerSchuelerName : schuelerNamen[0];
+        if (aktuelleKlasse && aktuellesFach) {
+            const fach = klassen[aktuelleKlasse][aktuellesFach];
+            schuelerInput.value = fach.schueler.join('\n');
+            klasseInput.value = aktuelleKlasse;
+            fachInput.value = aktuellesFach;
         } else {
-            aktuellerSchuelerName = null;
+            schuelerInput.value = '';
+            klasseInput.value = '';
+            fachInput.value = '';
         }
 
+        renderKlassenTabs();
+        renderFaecherTabs();
         renderSchuelerTabs();
         erstelleRaster();
         updateAuswertung();
     }
 
     saveStateBtn.addEventListener('click', () => {
-        if (kriterien.length === 0 && schuelerNamen.length === 0) {
+        if (Object.keys(klassen).length === 0) {
             showNotification('Hinweis', 'Es sind keine Daten zum Speichern vorhanden.');
             return;
         }
-        const state = { kriterien, abstufungen, schuelerNamen, bewertungen };
+        const state = { kriterien, abstufungen, klassen };
         const dataStr = JSON.stringify(state, null, 2);
-        const dataBlob = new Blob([dataStr], {type: 'application/json'});
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
         const url = URL.createObjectURL(dataBlob);
         const link = document.createElement('a');
-        link.download = `kompetenzraster_stand_${new Date().toISOString().slice(0,10)}.json`;
+        link.download = `kompetenzraster_stand_${new Date().toISOString().slice(0, 10)}.json`;
         link.href = url;
-        document.body.appendChild(link); // Append to body to ensure visibility
+        document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link); // Clean up
+        document.body.removeChild(link);
         URL.revokeObjectURL(url);
     });
 
@@ -363,13 +439,17 @@ document.addEventListener('DOMContentLoaded', function () {
         reader.onload = (e) => {
             try {
                 const data = JSON.parse(e.target.result);
-                if (data.kriterien && data.abstufungen && data.schuelerNamen && data.bewertungen) {
+                if (data.kriterien && data.abstufungen && data.klassen) {
                     kriterien.length = 0;
                     abstufungen.length = 0;
                     Array.prototype.push.apply(kriterien, data.kriterien);
                     Array.prototype.push.apply(abstufungen, data.abstufungen);
-                    schuelerNamen = data.schuelerNamen;
-                    bewertungen = data.bewertungen;
+                    klassen = data.klassen;
+
+                    aktuelleKlasse = Object.keys(klassen)[0] || null;
+                    aktuellesFach = aktuelleKlasse ? Object.keys(klassen[aktuelleKlasse])[0] || null : null;
+                    aktuellerSchuelerName = aktuellesFach ? klassen[aktuelleKlasse][aktuellesFach].schueler[0] || null : null;
+
                     renderAllFromState();
                     showNotification('Erfolg', 'Der Bearbeitungsstand wurde erfolgreich geladen.');
                 } else {
@@ -388,81 +468,84 @@ document.addEventListener('DOMContentLoaded', function () {
     const { jsPDF } = window.jspdf;
 
     async function exportAllToPdf() {
-        if (schuelerNamen.length === 0) {
-            showNotification('Hinweis', 'Bitte legen Sie zuerst eine Schülerliste an, um zu exportieren.');
+        if (Object.keys(klassen).length === 0) {
+            showNotification('Hinweis', 'Bitte legen Sie zuerst Klassen, Fächer und Schüler an.');
             return;
         }
 
         exportPdfBtn.disabled = true;
-        const originalSchueler = aktuellerSchuelerName;
+        exportPdfBtn.textContent = 'Exportiere...';
+
         const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
         const pageWidth = doc.internal.pageSize.getWidth();
-        const pageHeight = doc.internal.pageSize.getHeight();
         const margin = 15;
-        const contentWidth = pageWidth - (margin * 2);
+        let isFirstPage = true;
 
-        for (const [schuelerIndex, name] of schuelerNamen.entries()) {
-            exportPdfBtn.textContent = `Exportiere Schüler ${schuelerIndex + 1}/${schuelerNamen.length}: ${name}`;
+        const originalState = { aktuelleKlasse, aktuellesFach, aktuellerSchuelerName };
 
-            if (schuelerIndex > 0) doc.addPage();
+        for (const klasseName of Object.keys(klassen).sort()) {
+            for (const fachName of Object.keys(klassen[klasseName]).sort()) {
+                const fach = klassen[klasseName][fachName];
+                for (const schuelerName of fach.schueler) {
 
-            aktuellerSchuelerName = name;
-            renderSchuelerTabs();
-            erstelleRaster();
-            updateAuswertung();
-            await new Promise(resolve => setTimeout(resolve, 100));
+                    if (!isFirstPage) {
+                        doc.addPage();
+                    }
+                    isFirstPage = false;
 
-            const hatBewertung = bewertungen[name] && !bewertungen[name].bewertung.every(b => b === null);
-            if (!hatBewertung || auswertungContainer.classList.contains('hidden')) {
-                doc.setFontSize(18);
-                doc.text(`Auswertung für: ${name}`, margin, 20);
-                doc.setFontSize(12);
-                doc.text('Für diesen Schüler/diese Schülerin liegt noch keine Bewertung vor.', margin, 30);
-                continue;
+                    // Temporär Zustand für die Darstellung wechseln
+                    aktuelleKlasse = klasseName;
+                    aktuellesFach = fachName;
+                    aktuellerSchuelerName = schuelerName;
+                    renderAllFromState();
+                    await new Promise(resolve => setTimeout(resolve, 100)); // Warten auf UI-Update
+
+                    const hatBewertung = fach.bewertungen[schuelerName] && !fach.bewertungen[schuelerName].bewertung.every(b => b === null);
+
+                    doc.setFontSize(10);
+                    doc.text(`Klasse: ${klasseName}`, margin, margin - 5);
+                    doc.text(`Fach: ${fachName}`, pageWidth - margin, margin - 5, { align: 'right' });
+
+                    if (!hatBewertung) {
+                        doc.setFontSize(18);
+                        doc.text(`Auswertung für: ${schuelerName}`, margin, 25);
+                        doc.setFontSize(12);
+                        doc.text('Für diesen Schüler/diese Schülerin liegt noch keine Bewertung vor.', margin, 35);
+                        continue;
+                    }
+
+                    const tempContainer = document.createElement('div');
+                    tempContainer.style.position = 'absolute';
+                    tempContainer.style.left = '-9999px';
+                    tempContainer.style.width = '800px';
+                    document.body.appendChild(tempContainer);
+
+                    const titleClone = auswertungTitel.cloneNode(true);
+                    titleClone.textContent = `Auswertung für: ${schuelerName}`;
+                    tempContainer.appendChild(titleClone);
+
+                    const chartClone = auswertungChart.cloneNode(true);
+                    tempContainer.appendChild(chartClone);
+
+                    const canvas = await html2canvas(tempContainer, { scale: 2 });
+                    const imgData = canvas.toDataURL('image/jpeg', 0.8);
+                    const imgHeight = (canvas.height * (pageWidth - margin * 2)) / canvas.width;
+
+                    let position = margin;
+                    doc.addImage(imgData, 'JPEG', margin, position, pageWidth - margin * 2, imgHeight);
+
+                    document.body.removeChild(tempContainer);
+                }
             }
-
-            const tempContainer = document.createElement('div');
-            tempContainer.style.position = 'absolute';
-            tempContainer.style.left = '-9999px';
-            tempContainer.style.width = '800px';
-            document.body.appendChild(tempContainer);
-
-            const titleClone = auswertungTitel.cloneNode(true);
-            tempContainer.appendChild(titleClone);
-
-            const allItems = Array.from(auswertungChart.children);
-            let yPos = margin + 10;
-
-            for (const item of allItems) {
-                 tempContainer.appendChild(item.cloneNode(true));
-            }
-
-            const canvas = await html2canvas(tempContainer, { scale: 2, y: 0, height: tempContainer.scrollHeight });
-            const imgData = canvas.toDataURL('image/jpeg', 0.8);
-            const imgHeight = (canvas.height * contentWidth) / canvas.width;
-
-            let heightLeft = imgHeight;
-            let position = 0;
-
-            doc.addImage(imgData, 'JPEG', margin, margin, contentWidth, imgHeight);
-            heightLeft -= (pageHeight - (margin*2));
-
-            while (heightLeft > 0) {
-                position -= (pageHeight - (margin*2));
-                doc.addPage();
-                doc.addImage(imgData, 'JPEG', margin, position, contentWidth, imgHeight);
-                heightLeft -= (pageHeight - (margin*2));
-            }
-
-            document.body.removeChild(tempContainer);
         }
 
-        doc.save(`Kompetenzraster_Alle_Schueler_${new Date().toISOString().slice(0,10)}.pdf`);
+        doc.save(`Kompetenzraster_Alle_${new Date().toISOString().slice(0,10)}.pdf`);
 
-        aktuellerSchuelerName = originalSchueler;
-        renderSchuelerTabs();
-        erstelleRaster();
-        updateAuswertung();
+        // Ursprünglichen Zustand wiederherstellen
+        aktuelleKlasse = originalState.aktuelleKlasse;
+        aktuellesFach = originalState.aktuellesFach;
+        aktuellerSchuelerName = originalState.aktuellerSchuelerName;
+        renderAllFromState();
 
         exportPdfBtn.disabled = false;
         exportPdfBtn.textContent = 'Alle Schüler als PDF speichern';

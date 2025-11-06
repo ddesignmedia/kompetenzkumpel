@@ -60,7 +60,16 @@
                 </div>
 
                 <div class="card">
-                    <h2 class="text-xl font-bold card-header">2. Schüler eingeben</h2>
+                    <h2 class="text-xl font-bold card-header">2. Schüler hinzufügen</h2>
+                    <div style="margin-bottom: 1rem;">
+                        <label for="klasse-input" class="form-label text-sm">Klasse</label>
+                        <input type="text" id="klasse-input" placeholder="z.B. 10a" class="tag-input" style="width: 100%;">
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <label for="fach-input" class="form-label text-sm">Fach</label>
+                        <input type="text" id="fach-input" placeholder="z.B. Deutsch" class="tag-input" style="width: 100%;">
+                    </div>
+
                     <label for="schueler-input" class="form-label text-sm">Schülernamen</label>
                     <p class="text-xs form-description">Namen durch Komma oder Zeilenumbruch trennen.</p>
                     <textarea id="schueler-input" rows="4" class="form-textarea" placeholder="Anna, Ben, Clara..."></textarea>
@@ -70,8 +79,8 @@
                 </div>
 
                 <div class="card">
-                    <h2 class="text-xl font-bold card-header">3. Zwischenstand sichern</h2>
-                    <p class="text-sm text-gray-600" style="margin-bottom: 1rem;">Speichern oder laden Sie den kompletten Bearbeitungsstand.</p>
+                    <h2 class="text-xl font-bold card-header">3. Speichern & Exportieren</h2>
+                    <p class="text-sm text-gray-600" style="margin-bottom: 1rem;">Speichern oder laden Sie den Bearbeitungsstand oder exportieren Sie die Auswertungen als PDF.</p>
                     <div class="space-y-3">
                         <button id="save-state-btn" class="btn btn-indigo">
                             Stand speichern (JSON)
@@ -80,20 +89,23 @@
                             Stand laden (JSON)
                         </button>
                         <input type="file" id="load-state-input" class="hidden" accept=".json">
+                        <div style="border-top: 1px solid var(--color-gray-200); margin-top: 1.5rem; padding-top: 1.5rem;">
+                             <button id="export-pdf-btn" class="btn btn-dark-gray">
+                                Alle Schüler als PDF speichern
+                            </button>
+                        </div>
                     </div>
-                </div>
-
-                <div class="card">
-                    <h2 class="text-xl font-bold card-header">4. Exportieren</h2>
-                    <p class="text-sm text-gray-600" style="margin-bottom: 1rem;">Exportieren Sie die Auswertungen aller Schüler als gesammelte PDF-Datei.</p>
-                    <button id="export-pdf-btn" class="btn btn-dark-gray">
-                        Alle Schüler als PDF speichern
-                    </button>
                 </div>
             </div>
 
             <!-- Rechte Spalte: Raster und Auswertung -->
             <div class="grid-col-span-2 space-y-8">
+                <div id="klassen-tabs-container" class="flex flex-wrap gap-2">
+                    <!-- Klassen-Tabs werden hier eingefügt -->
+                </div>
+                <div id="faecher-tabs-container" class="flex flex-wrap gap-2">
+                    <!-- Fächer-Tabs werden hier eingefügt -->
+                </div>
                 <div id="schueler-tabs-container" class="flex flex-wrap gap-2">
                     <!-- Schüler-Tabs werden hier eingefügt -->
                 </div>

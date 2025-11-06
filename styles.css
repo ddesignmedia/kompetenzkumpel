@@ -191,6 +191,11 @@ h1, h2, h3, h4, h5, h6 {
     border-radius: var(--rounded-lg);
     background-color: var(--color-white);
 }
+
+#kriterien-container, #abstufungen-container {
+    max-height: 200px;
+    overflow-y: auto;
+}
 .tag {
     display: flex;
     align-items: center;
