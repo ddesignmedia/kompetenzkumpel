@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', function () {
     "Ansatzweise erkennbar",
     "Noch nicht erkennbar"
   ];
+    let schueler = [];
     let klassen = {}; // { "6a": { "Mathe": { schueler: ["Anna", "Ben"], bewertungen: { "Anna": [...] } } } }
     let aktuelleKlasse = null;
     let aktuellesFach = null;
@@ -24,14 +25,19 @@ document.addEventListener('DOMContentLoaded', function () {
     let geladeneVorlagen = {};
 
     // DOM-Elemente
-    const klasseInput = document.getElementById('klasse-input');
-    const fachInput = document.getElementById('fach-input');
+    const klasseSelect = document.getElementById('klasse-select');
+    const neueKlasseInput = document.getElementById('neue-klasse-input');
+    const neueKlasseBtn = document.getElementById('neue-klasse-btn');
+    const fachSelect = document.getElementById('fach-select');
+    const neuesFachInput = document.getElementById('neues-fach-input');
+    const neuesFachBtn = document.getElementById('neues-fach-btn');
     const kriterienContainer = document.getElementById('kriterien-container');
     const kriterienInput = document.getElementById('kriterien-input');
     const abstufungenContainer = document.getElementById('abstufungen-container');
     const abstufungenInput = document.getElementById('abstufungen-input');
     const rasterErstellenBtn = document.getElementById('raster-erstellen-btn');
 
+    const schuelerContainer = document.getElementById('schueler-container');
     const schuelerInput = document.getElementById('schueler-input');
     const schuelerAnlegenBtn = document.getElementById('schueler-anlegen-btn');
     const klassenTabsContainer = document.getElementById('klassen-tabs-container');
@@ -115,15 +121,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const renderKriterienTags = setupTagInput(kriterienContainer, kriterienInput, kriterien);
     const renderAbstufungenTags = setupTagInput(abstufungenContainer, abstufungenInput, abstufungen);
+    const renderSchuelerTags = setupTagInput(schuelerContainer, schuelerInput, schueler);
 
     // --- Schüler-Logik ---
     schuelerAnlegenBtn.addEventListener('click', () => {
-        const klasseName = klasseInput.value.trim();
-        const fachName = fachInput.value.trim();
-        const names = schuelerInput.value
-            .split(/[\n,]+/)
-            .map(name => name.trim())
-            .filter(name => name.length > 0);
+        const klasseName = klasseSelect.value;
+        const fachName = fachSelect.value;
+        const names = schueler;
 
         if (!klasseName || !fachName || names.length === 0) {
             showNotification('Eingabefehler', 'Bitte geben Sie eine Klasse, ein Fach und mindestens einen Schülernamen ein.');
@@ -227,6 +231,69 @@ document.addEventListener('DOMContentLoaded', function () {
             schuelerTabsContainer.appendChild(tab);
         });
     }
+
+    // --- Combo Box Logik ---
+    function updateKlasseSelect() {
+        const klassenNamen = Object.keys(klassen).sort();
+        klasseSelect.innerHTML = '';
+        klassenNamen.forEach(name => {
+            const option = document.createElement('option');
+            option.value = option.textContent = name;
+            klasseSelect.appendChild(option);
+        });
+        if (aktuelleKlasse) {
+            klasseSelect.value = aktuelleKlasse;
+        }
+    }
+
+    function updateFachSelect() {
+        fachSelect.innerHTML = '';
+        if (!aktuelleKlasse || !klassen[aktuelleKlasse]) return;
+
+        const faecherNamen = Object.keys(klassen[aktuelleKlasse]).sort();
+        faecherNamen.forEach(name => {
+            const option = document.createElement('option');
+            option.value = option.textContent = name;
+            fachSelect.appendChild(option);
+        });
+        if (aktuellesFach) {
+            fachSelect.value = aktuellesFach;
+        }
+    }
+
+    neueKlasseBtn.addEventListener('click', () => {
+        const neueKlasse = neueKlasseInput.value.trim();
+        if (neueKlasse && !klassen[neueKlasse]) {
+            klassen[neueKlasse] = {};
+            aktuelleKlasse = neueKlasse;
+            aktuellesFach = null;
+            neueKlasseInput.value = '';
+            renderAllFromState();
+        }
+    });
+
+    neuesFachBtn.addEventListener('click', () => {
+        const neuesFach = neuesFachInput.value.trim();
+        if (neuesFach && aktuelleKlasse && !klassen[aktuelleKlasse][neuesFach]) {
+            klassen[aktuelleKlasse][neuesFach] = { schueler: [], bewertungen: {} };
+            aktuellesFach = neuesFach;
+            neuesFachInput.value = '';
+            renderAllFromState();
+        }
+    });
+
+    klasseSelect.addEventListener('change', () => {
+        aktuelleKlasse = klasseSelect.value;
+        const faecher = Object.keys(klassen[aktuelleKlasse]);
+        aktuellesFach = faecher.length > 0 ? faecher[0] : null;
+        renderAllFromState();
+    });
+
+    fachSelect.addEventListener('change', () => {
+        aktuellesFach = fachSelect.value;
+        renderAllFromState();
+    });
+
 
     // --- Raster-Logik ---
     rasterErstellenBtn.addEventListener('click', () => {
@@ -394,17 +461,15 @@ document.addEventListener('DOMContentLoaded', function () {
     function renderAllFromState() {
         renderKriterienTags();
         renderAbstufungenTags();
+        updateKlasseSelect();
+        updateFachSelect();
 
-        if (aktuelleKlasse && aktuellesFach) {
+        schueler.length = 0;
+        if (aktuelleKlasse && aktuellesFach && klassen[aktuelleKlasse][aktuellesFach]) {
             const fach = klassen[aktuelleKlasse][aktuellesFach];
-            schuelerInput.value = fach.schueler.join('\n');
-            klasseInput.value = aktuelleKlasse;
-            fachInput.value = aktuellesFach;
-        } else {
-            schuelerInput.value = '';
-            klasseInput.value = '';
-            fachInput.value = '';
+            Array.prototype.push.apply(schueler, fach.schueler);
         }
+        renderSchuelerTags();
 
         renderKlassenTabs();
         renderFaecherTabs();
@@ -671,4 +736,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Initialisierung ---
     ladeVorlagen();
+
+    document.querySelectorAll('.card > .card-header').forEach(header => {
+        header.addEventListener('click', () => {
+            const content = header.nextElementSibling;
+            if (content && content.classList.contains('card-content')) {
+                content.classList.toggle('hidden');
+                header.classList.toggle('collapsed');
+            }
+        });
+    });
 });

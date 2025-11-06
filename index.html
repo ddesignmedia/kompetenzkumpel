@@ -23,86 +23,106 @@
             <div class="grid-col-span-1 space-y-6">
                 <div class="card">
                     <h2 class="text-xl font-bold card-header">1. Raster definieren</h2>
-
-                    <div>
-                        <label for="kriterien-input" class="form-label text-sm">Kriterien</label>
-                        <p class="text-xs form-description">Geben Sie ein Kriterium ein und drücken Sie die Eingabetaste.</p>
-                        <div id="kriterien-container" class="tag-input-container">
-                            <input type="text" id="kriterien-input" placeholder="z.B. Teamfähigkeit..." class="tag-input">
+                    <div class="card-content">
+                        <div>
+                            <label for="kriterien-input" class="form-label text-sm">Kriterien</label>
+                            <p class="text-xs form-description">Geben Sie ein Kriterium ein und drücken Sie die Eingabetaste.</p>
+                            <div id="kriterien-container" class="tag-input-container">
+                                <input type="text" id="kriterien-input" placeholder="z.B. Teamfähigkeit..." class="tag-input">
+                            </div>
                         </div>
-                    </div>
 
-                    <div style="margin-top: 1rem;">
-                        <label for="abstufungen-input" class="form-label text-sm">Abstufungen</label>
-                        <p class="text-xs form-description">Geben Sie eine Abstufung ein und drücken Sie die Eingabetaste.</p>
-                        <div id="abstufungen-container" class="tag-input-container">
-                             <input type="text" id="abstufungen-input" placeholder="z.B. Anfänger..." class="tag-input">
+                        <div style="margin-top: 1rem;">
+                            <label for="abstufungen-input" class="form-label text-sm">Abstufungen</label>
+                            <p class="text-xs form-description">Geben Sie eine Abstufung ein und drücken Sie die Eingabetaste.</p>
+                            <div id="abstufungen-container" class="tag-input-container">
+                                 <input type="text" id="abstufungen-input" placeholder="z.B. Anfänger..." class="tag-input">
+                            </div>
                         </div>
-                    </div>
 
-                    <button id="raster-erstellen-btn" class="btn btn-blue" style="margin-top: 1.5rem;">
-                        Raster erstellen / aktualisieren
-                    </button>
-
-                    <div class="space-y-3" style="margin-top: 1.5rem; border-top: 1px solid var(--color-gray-200); padding-top: 1.5rem;">
-                        <h3 class="text-lg font-semibold card-header" style="padding-bottom: 0.5rem; border-bottom: none; margin-bottom: 0;">Raster-Vorlagen</h3>
-                         <p class="text-xs form-description" style="margin-bottom: 1rem;">Speichern Sie das aktuelle Raster als `vorlage.json` oder wählen Sie eine Vorlage aus der Liste und laden Sie sie.</p>
-                        <button id="save-vorlage-btn" class="btn btn-gray">
-                            Vorlage speichern (vorlage.json)
+                        <button id="raster-erstellen-btn" class="btn btn-blue" style="margin-top: 1.5rem;">
+                            Raster erstellen / aktualisieren
                         </button>
-                        <div class="flex items-center space-x-2">
-                            <select id="vorlagen-select" class="form-select"></select>
-                            <button id="load-vorlage-btn" class="btn btn-gray">
-                                Vorlage laden
+
+                        <div class="space-y-3" style="margin-top: 1.5rem; border-top: 1px solid var(--color-gray-200); padding-top: 1.5rem;">
+                            <h3 class="text-lg font-semibold card-header" style="padding-bottom: 0.5rem; border-bottom: none; margin-bottom: 0;">Raster-Vorlagen</h3>
+                             <p class="text-xs form-description" style="margin-bottom: 1rem;">Speichern Sie das aktuelle Raster als `vorlage.json` oder wählen Sie eine Vorlage aus der Liste und laden Sie sie.</p>
+                            <button id="save-vorlage-btn" class="btn btn-gray">
+                                Vorlage speichern (vorlage.json)
                             </button>
+                            <div class="flex items-center space-x-2">
+                                <select id="vorlagen-select" class="form-select"></select>
+                                <button id="load-vorlage-btn" class="btn btn-gray">
+                                    Vorlage laden
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="card">
                     <h2 class="text-xl font-bold card-header">2. Schüler hinzufügen</h2>
-                    <div style="margin-bottom: 1rem;">
-                        <label for="klasse-input" class="form-label text-sm">Klasse</label>
-                        <input type="text" id="klasse-input" placeholder="z.B. 10a" class="tag-input" style="width: 100%;">
-                    </div>
-                    <div style="margin-bottom: 1rem;">
-                        <label for="fach-input" class="form-label text-sm">Fach</label>
-                        <input type="text" id="fach-input" placeholder="z.B. Deutsch" class="tag-input" style="width: 100%;">
-                    </div>
+                    <div class="card-content">
+                        <div class="combo-container" style="margin-bottom: 1rem;">
+                            <label for="klasse-select" class="form-label text-sm">Klasse</label>
+                            <p class="text-xs form-description">Wählen Sie eine Klasse oder legen Sie eine neue an.</p>
+                            <div class="combo-box">
+                                <select id="klasse-select" class="form-select"></select>
+                                <input type="text" id="neue-klasse-input" class="tag-input" placeholder="Neue Klasse...">
+                                <button id="neue-klasse-btn" class="btn btn-gray combo-btn">+</button>
+                            </div>
+                        </div>
 
-                    <label for="schueler-input" class="form-label text-sm">Schülernamen</label>
-                    <p class="text-xs form-description">Namen durch Komma oder Zeilenumbruch trennen.</p>
-                    <textarea id="schueler-input" rows="4" class="form-textarea" placeholder="Anna, Ben, Clara..."></textarea>
-                    <button id="schueler-anlegen-btn" class="btn btn-green" style="margin-top: 1rem;">
-                        Schülerliste anlegen
-                    </button>
+                        <div class="combo-container" style="margin-bottom: 1rem;">
+                            <label for="fach-select" class="form-label text-sm">Fach</label>
+                             <p class="text-xs form-description">Wählen Sie ein Fach oder legen Sie ein neues an.</p>
+                            <div class="combo-box">
+                                <select id="fach-select" class="form-select"></select>
+                                <input type="text" id="neues-fach-input" class="tag-input" placeholder="Neues Fach...">
+                                <button id="neues-fach-btn" class="btn btn-gray combo-btn">+</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="schueler-input" class="form-label text-sm">Schülernamen</label>
+                            <p class="text-xs form-description">Geben Sie einen Namen ein und drücken Sie die Eingabetaste.</p>
+                            <div id="schueler-container" class="tag-input-container">
+                                <input type="text" id="schueler-input" placeholder="z.B. Anna..." class="tag-input">
+                            </div>
+                        </div>
+                        <button id="schueler-anlegen-btn" class="btn btn-green" style="margin-top: 1rem;">
+                            Schülerliste anlegen
+                        </button>
+                    </div>
                 </div>
 
                 <div class="card">
                     <h2 class="text-xl font-bold card-header">3. Speichern & Exportieren</h2>
-                    <p class="text-sm text-gray-600" style="margin-bottom: 1rem;">Speichern oder laden Sie den Bearbeitungsstand oder exportieren Sie die Auswertungen als PDF.</p>
-                    <div class="space-y-3">
-                        <button id="save-state-btn" class="btn btn-indigo">
-                            Stand speichern (JSON)
-                        </button>
-                        <button id="load-state-btn" class="btn btn-gray">
-                            Stand laden (JSON)
-                        </button>
-                        <input type="file" id="load-state-input" class="hidden" accept=".json">
-                        <div style="border-top: 1px solid var(--color-gray-200); margin-top: 1.5rem; padding-top: 1.5rem;">
-                            <div class="space-y-3" style="margin-bottom: 1.5rem;">
-                                <div>
-                                    <label for="export-klasse-select" class="form-label text-sm">Klasse für Export auswählen</label>
-                                    <select id="export-klasse-select" class="form-select" style="width: 100%;"></select>
-                                </div>
-                                <div>
-                                    <label for="export-fach-select" class="form-label text-sm">Fach für Export auswählen</label>
-                                    <select id="export-fach-select" class="form-select" style="width: 100%;"></select>
-                                </div>
-                            </div>
-                            <button id="export-pdf-btn" class="btn btn-dark-gray">
-                                Auswahl als PDF speichern
+                    <div class="card-content">
+                        <p class="text-sm text-gray-600" style="margin-bottom: 1rem;">Speichern oder laden Sie den Bearbeitungsstand oder exportieren Sie die Auswertungen als PDF.</p>
+                        <div class="space-y-3">
+                            <button id="save-state-btn" class="btn btn-indigo">
+                                Stand speichern (JSON)
                             </button>
+                            <button id="load-state-btn" class="btn btn-gray">
+                                Stand laden (JSON)
+                            </button>
+                            <input type="file" id="load-state-input" class="hidden" accept=".json">
+                            <div style="border-top: 1px solid var(--color-gray-200); margin-top: 1.5rem; padding-top: 1.5rem;">
+                                <div class="space-y-3" style="margin-bottom: 1.5rem;">
+                                    <div>
+                                        <label for="export-klasse-select" class="form-label text-sm">Klasse für Export auswählen</label>
+                                        <select id="export-klasse-select" class="form-select" style="width: 100%;"></select>
+                                    </div>
+                                    <div>
+                                        <label for="export-fach-select" class="form-label text-sm">Fach für Export auswählen</label>
+                                        <select id="export-fach-select" class="form-select" style="width: 100%;"></select>
+                                    </div>
+                                </div>
+                                <button id="export-pdf-btn" class="btn btn-dark-gray">
+                                    Auswahl als PDF speichern
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
