@@ -90,8 +90,18 @@
                         </button>
                         <input type="file" id="load-state-input" class="hidden" accept=".json">
                         <div style="border-top: 1px solid var(--color-gray-200); margin-top: 1.5rem; padding-top: 1.5rem;">
-                             <button id="export-pdf-btn" class="btn btn-dark-gray">
-                                Alle Schüler als PDF speichern
+                            <div class="space-y-3" style="margin-bottom: 1.5rem;">
+                                <div>
+                                    <label for="export-klasse-select" class="form-label text-sm">Klasse für Export auswählen</label>
+                                    <select id="export-klasse-select" class="form-select" style="width: 100%;"></select>
+                                </div>
+                                <div>
+                                    <label for="export-fach-select" class="form-label text-sm">Fach für Export auswählen</label>
+                                    <select id="export-fach-select" class="form-select" style="width: 100%;"></select>
+                                </div>
+                            </div>
+                            <button id="export-pdf-btn" class="btn btn-dark-gray">
+                                Auswahl als PDF speichern
                             </button>
                         </div>
                     </div>
