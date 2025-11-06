@@ -422,7 +422,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const bewertungIndex = aktuelleBewertung[kIndex];
             if (bewertungIndex === null || bewertungIndex >= abstufungen.length) return;
 
-            const prozent = (bewertungIndex + 1) / abstufungen.length * 100;
+            const prozent = (abstufungen.length - bewertungIndex) / abstufungen.length * 100;
             const farbe = farben[bewertungIndex % farben.length];
 
             const barContainer = document.createElement('div');
