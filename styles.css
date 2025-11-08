@@ -250,6 +250,13 @@ h1, h2, h3, h4, h5, h6 {
     border-radius: 0.375rem;
     padding: 4px 8px;
     font-size: 0.875rem;
+    cursor: move;
+    transition: opacity 0.2s ease-in-out, background-color 0.2s ease-in-out;
+}
+.tag.dragging {
+    opacity: 0.5;
+    background-color: var(--color-primary);
+    color: var(--color-white);
 }
 .tag button {
     margin-left: 8px;

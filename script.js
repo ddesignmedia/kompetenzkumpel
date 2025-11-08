@@ -88,21 +88,94 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Tag Input Logik ---
     function setupTagInput(container, input, dataArray) {
+        let draggedIndex = -1;
+
         function renderTags() {
             container.querySelectorAll('.tag').forEach(tag => tag.remove());
             dataArray.forEach((item, index) => {
                 const tag = document.createElement('span');
                 tag.className = 'tag';
                 tag.textContent = item;
+                tag.draggable = true;
+                tag.dataset.index = index;
+
+                // Drag-and-Drop Event Listener
+                tag.addEventListener('dragstart', (e) => {
+                    draggedIndex = index;
+                    e.dataTransfer.effectAllowed = 'move';
+                    // Kleiner Timeout, damit der Browser das Element "greifen" kann
+                    setTimeout(() => e.target.classList.add('dragging'), 0);
+                });
+
+                tag.addEventListener('dragend', (e) => {
+                    e.target.classList.remove('dragging');
+                });
+
                 const removeBtn = document.createElement('button');
                 removeBtn.innerHTML = '&times;';
                 removeBtn.onclick = () => {
                     dataArray.splice(index, 1);
                     renderTags();
+                    if (container === abstufungenContainer) {
+                        erstelleRaster();
+                    }
                 };
                 tag.appendChild(removeBtn);
                 container.insertBefore(tag, input);
             });
+        }
+
+        container.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const afterElement = getDragAfterElement(container, e.clientY);
+            const dragging = container.querySelector('.dragging');
+            if (dragging) {
+                if (afterElement == null) {
+                    container.insertBefore(dragging, input);
+                } else {
+                    container.insertBefore(dragging, afterElement);
+                }
+            }
+        });
+
+        container.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const target = e.target.closest('.tag');
+            if (target && draggedIndex !== -1) {
+                const targetIndex = parseInt(target.dataset.index);
+
+                // Element verschieben
+                const [draggedItem] = dataArray.splice(draggedIndex, 1);
+
+                // Den neuen Index finden, da sich die Indizes verschoben haben könnten
+                const newTargetIndex = Array.from(container.querySelectorAll('.tag:not(.dragging)')).indexOf(target);
+
+                dataArray.splice(newTargetIndex, 0, draggedItem);
+
+                // UI aktualisieren
+                renderTags();
+
+                // Wenn es die Abstufungen sind, das Raster neu zeichnen
+                if (container === abstufungenContainer) {
+                    erstelleRaster();
+                    updateAuswertung();
+                }
+            }
+            draggedIndex = -1;
+        });
+
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.tag:not(.dragging)')];
+
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
         }
 
         input.addEventListener('keydown', (e) => {
