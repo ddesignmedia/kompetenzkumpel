@@ -11,11 +11,12 @@ document.addEventListener('DOMContentLoaded', function () {
     "Arbeitsaufträge erfüllt"
   ];
     let abstufungen = [
-    "Herausragend",
-    "Deutlich ausgeprägt",
-    "Erkennbar",
+    "Noch nicht erkennbar",
     "Ansatzweise erkennbar",
-    "Noch nicht erkennbar"
+    "Erkennbar",
+    "Deutlich ausgeprägt",
+    "Stark ausgeprägt",
+    "Herausragend"
   ];
     let schueler = [];
     let klassen = {}; // { "6a": { "Mathe": { schueler: ["Anna", "Ben"], bewertungen: { "Anna": [...] } } } }
@@ -53,6 +54,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const auswertungContainer = document.getElementById('auswertung-container');
     const auswertungTitel = document.getElementById('auswertung-titel');
     const auswertungChart = document.getElementById('auswertung-chart');
+    const notenvorschlagSpan = document.getElementById('notenvorschlag');
 
     const saveStateBtn = document.getElementById('save-state-btn');
     const loadStateBtn = document.getElementById('load-state-btn');
@@ -235,8 +237,8 @@ document.addEventListener('DOMContentLoaded', function () {
         fach.schueler = [...fach.schueler, ...neueSchueler].sort();
 
         neueSchueler.forEach(name => {
-            fach.bewertungen[name] = {
-                bewertung: Array(kriterien.length).fill(null)
+             fach.bewertungen[name] = {
+                bewertung: Array.from({ length: kriterien.length }, () => ({ wert: null, gewicht: 1 }))
             };
         });
 
@@ -409,20 +411,15 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        // Reset evaluations when grid is re-created
-        const oldBewertungen = JSON.parse(JSON.stringify(bewertungen));
-        bewertungen = {};
-        schuelerNamen.forEach(name => {
-            bewertungen[name] = {
-                bewertung: Array(kriterien.length).fill(null)
-            };
-             // Try to keep old evaluations if student still exists
-            if (oldBewertungen[name]) {
-                bewertungen[name].bewertung = oldBewertungen[name].bewertung.slice(0, kriterien.length);
-                while(bewertungen[name].bewertung.length < kriterien.length) {
-                    bewertungen[name].bewertung.push(null);
-                }
-            }
+        Object.values(klassen).forEach(fachMap => {
+            Object.values(fachMap).forEach(fach => {
+                Object.values(fach.bewertungen).forEach(schuelerBewertung => {
+                    // Stelle sicher, dass für jedes Kriterium ein Bewertungsobjekt existiert
+                    while (schuelerBewertung.bewertung.length < kriterien.length) {
+                        schuelerBewertung.bewertung.push({ wert: null, gewicht: 1 });
+                    }
+                });
+            });
         });
 
         erstelleRaster();
@@ -451,8 +448,14 @@ document.addEventListener('DOMContentLoaded', function () {
         kompetenzRaster.appendChild(thead);
 
         const tbody = document.createElement('tbody');
+        const aktuelleBewertungen = klassen[aktuelleKlasse][aktuellesFach].bewertungen[aktuellerSchuelerName].bewertung;
         kriterien.forEach((kriterium, kIndex) => {
-            let row = `<tr><td class="font-medium">${kriterium}</td>`;
+            const gewicht = aktuelleBewertungen[kIndex] ? aktuelleBewertungen[kIndex].gewicht : 1;
+            let row = `<tr>
+                        <td class="font-medium kriterium-zelle" data-kriterium-index="${kIndex}">
+                            ${kriterium}
+                            <span class="gewicht-indicator">x${gewicht}</span>
+                        </td>`;
             abstufungen.forEach((_, aIndex) => {
                 row += `<td class="grid-cell" data-kriterium-index="${kIndex}" data-abstufung-index="${aIndex}"></td>`;
             });
@@ -466,20 +469,38 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function addGridCellListeners() {
+        // Klick auf Bewertungszellen
         kompetenzRaster.querySelectorAll('.grid-cell').forEach(cell => {
             cell.addEventListener('click', () => {
                 if (!aktuelleKlasse || !aktuellesFach || !aktuellerSchuelerName) return;
 
                 const kIndex = parseInt(cell.dataset.kriteriumIndex);
                 const aIndex = parseInt(cell.dataset.abstufungIndex);
-                const aktuelleBewertung = klassen[aktuelleKlasse][aktuellesFach].bewertungen[aktuellerSchuelerName].bewertung;
+                const bewertungObj = klassen[aktuelleKlasse][aktuellesFach].bewertungen[aktuellerSchuelerName].bewertung[kIndex];
 
-                if (aktuelleBewertung[kIndex] === aIndex) {
-                   aktuelleBewertung[kIndex] = null;
+                if (bewertungObj.wert === aIndex) {
+                    bewertungObj.wert = null; // Deselektieren
                 } else {
-                   aktuelleBewertung[kIndex] = aIndex;
+                    bewertungObj.wert = aIndex; // Selektieren
                 }
 
+                updateRasterAnsicht();
+                updateAuswertung();
+            });
+        });
+
+        // Klick auf Kriterium-Zelle zur Gewichtung
+        kompetenzRaster.querySelectorAll('.kriterium-zelle').forEach(zelle => {
+            zelle.addEventListener('click', () => {
+                if (!aktuelleKlasse || !aktuellesFach || !aktuellerSchuelerName) return;
+
+                const kIndex = parseInt(zelle.dataset.kriteriumIndex);
+                const bewertungObj = klassen[aktuelleKlasse][aktuellesFach].bewertungen[aktuellerSchuelerName].bewertung[kIndex];
+
+                // Zyklus: 1 -> 2 -> 3 -> 1
+                bewertungObj.gewicht = bewertungObj.gewicht === 1 ? 2 : bewertungObj.gewicht === 2 ? 3 : 1;
+
+                // UI direkt aktualisieren und neu berechnen
                 updateRasterAnsicht();
                 updateAuswertung();
             });
@@ -492,25 +513,57 @@ document.addEventListener('DOMContentLoaded', function () {
 
         kompetenzRaster.querySelectorAll('.grid-cell').forEach(cell => {
             cell.classList.remove('selected');
-            // Remove all possible color classes
             for (let i = 0; i < abstufungen.length; i++) {
                 cell.classList.remove(`selected-color-${i}`);
             }
         });
 
-        aktuelleBewertung.forEach((aIndex, kIndex) => {
-            if (aIndex !== null) {
-                const cell = kompetenzRaster.querySelector(`[data-kriterium-index="${kIndex}"][data-abstufung-index="${aIndex}"]`);
+        // Kriterien-Zellen (Gewichtung) aktualisieren
+        kompetenzRaster.querySelectorAll('.kriterium-zelle').forEach(zelle => {
+             const kIndex = parseInt(zelle.dataset.kriteriumIndex);
+             const gewicht = aktuelleBewertung[kIndex].gewicht;
+             const indicator = zelle.querySelector('.gewicht-indicator');
+             if(indicator) {
+                indicator.textContent = `x${gewicht}`;
+             }
+        });
+
+        aktuelleBewertung.forEach((bewertungObj, kIndex) => {
+            if (bewertungObj.wert !== null) {
+                const cell = kompetenzRaster.querySelector(`[data-kriterium-index="${kIndex}"][data-abstufung-index="${bewertungObj.wert}"]`);
                 if (cell) {
                     cell.classList.add('selected');
-                    cell.classList.add(`selected-color-${aIndex}`);
+                    cell.classList.add(`selected-color-${bewertungObj.wert}`);
                 }
             }
         });
     }
 
     // --- Auswertungs-Logik ---
-    const farben = ['#22c55e', '#38bdf8', '#facc15', '#f97316', '#ef4444'];
+    const farben = ["#000000", "#ef4444", "#f97316", "#facc15", "#38bdf8", "#22c55e"];
+
+    function berechneNotenvorschlag(bewertungen) {
+        const benoteteKriterien = bewertungen.filter(b => b.wert !== null);
+        if (benoteteKriterien.length < kriterien.length) {
+            return null; // Nur berechnen, wenn alles bewertet ist
+        }
+
+        let gewichteteSumme = 0;
+        let gesamtGewicht = 0;
+
+        bewertungen.forEach(b => {
+            if (b.wert !== null) {
+                const note = abstufungen.length - b.wert;
+                gewichteteSumme += note * b.gewicht;
+                gesamtGewicht += b.gewicht;
+            }
+        });
+
+        if (gesamtGewicht === 0) return null;
+
+        const durchschnitt = gewichteteSumme / gesamtGewicht;
+        return durchschnitt.toFixed(2);
+    }
 
     function updateAuswertung() {
         if (!aktuelleKlasse || !aktuellesFach || !aktuellerSchuelerName || !klassen[aktuelleKlasse][aktuellesFach].bewertungen[aktuellerSchuelerName] || klassen[aktuelleKlasse][aktuellesFach].bewertungen[aktuellerSchuelerName].bewertung.every(b => b === null)) {
@@ -525,11 +578,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const aktuelleBewertung = klassen[aktuelleKlasse][aktuellesFach].bewertungen[aktuellerSchuelerName].bewertung;
 
-        kriterien.forEach((kriterium, kIndex) => {
-            const bewertungIndex = aktuelleBewertung[kIndex];
-            if (bewertungIndex === null || bewertungIndex >= abstufungen.length) return;
+        const notenvorschlag = berechneNotenvorschlag(aktuelleBewertung);
+        if (notenvorschlag) {
+            notenvorschlagSpan.textContent = notenvorschlag;
+        } else {
+            notenvorschlagSpan.textContent = '--';
+        }
 
-            const prozent = (abstufungen.length - bewertungIndex) / abstufungen.length * 100;
+        kriterien.forEach((kriterium, kIndex) => {
+            const bewertungObj = aktuelleBewertung[kIndex];
+            if (bewertungObj.wert === null || bewertungObj.wert >= abstufungen.length) return;
+            const bewertungIndex = bewertungObj.wert;
+
+            const prozent = (bewertungIndex + 1) / abstufungen.length * 100;
             const farbe = farben[bewertungIndex % farben.length];
 
             const barContainer = document.createElement('div');
@@ -545,6 +606,9 @@ document.addEventListener('DOMContentLoaded', function () {
             stufeLabel.textContent = abstufungen[bewertungIndex];
             stufeLabel.className = 'progress-bar-stufe';
             stufeLabel.style.backgroundColor = farbe;
+            if (farbe === '#000000') {
+                stufeLabel.style.color = '#ffffff';
+            }
 
             labelContainer.appendChild(kriteriumLabel);
             labelContainer.appendChild(stufeLabel);

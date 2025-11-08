@@ -344,6 +344,7 @@ h1, h2, h3, h4, h5, h6 {
 .grid-cell.selected-color-2 { background-color: #facc15; } /* Erkennbar: gelb */
 .grid-cell.selected-color-3 { background-color: #f97316; } /* Ansatzweise erkennbar: orange */
 .grid-cell.selected-color-4 { background-color: #ef4444; } /* Noch nicht erkennbar: rot */
+.grid-cell.selected-color-5 { background-color: #000000; } /* Ungenügend: schwarz */
 .schueler-tab {
     padding: 0.5rem 1rem;
     border: 1px solid var(--color-gray-300);
@@ -351,6 +352,30 @@ h1, h2, h3, h4, h5, h6 {
     transition: background-color 0.2s, color 0.2s;
     cursor: pointer;
     background-color: var(--color-white);
+}
+
+.kriterium-zelle {
+    cursor: pointer;
+    user-select: none; /* Verhindert das Markieren von Text */
+    position: relative; /* Für die Positionierung des Indikators */
+}
+
+.gewicht-indicator {
+    display: inline-block;
+    position: absolute; /* Positioniert den Indikator rechts in der Zelle */
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: #e2e8f0;
+    color: #475569;
+    padding: 2px 6px;
+    border-radius: 9999px; /* Pillen-Form */
+    font-size: 0.75rem; /* 12px */
+    font-weight: 600;
+}
+
+.kriterium-zelle:hover .gewicht-indicator {
+    background-color: #cbd5e1; /* Etwas dunkler beim Hovern */
 }
 .schueler-tab.active {
     background-color: var(--color-primary);
