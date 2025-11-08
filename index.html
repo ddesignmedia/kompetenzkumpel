@@ -70,6 +70,7 @@
                                 <select id="klasse-select" class="form-select"></select>
                                 <input type="text" id="neue-klasse-input" class="tag-input" placeholder="Neue Klasse...">
                                 <button id="neue-klasse-btn" class="btn btn-gray combo-btn">+</button>
+                                <button id="loesche-klasse-btn" class="btn btn-gray combo-btn">-</button>
                             </div>
                         </div>
 
@@ -85,10 +86,8 @@
 
                         <div>
                             <label for="schueler-input" class="form-label text-sm">Schülernamen</label>
-                            <p class="text-xs form-description">Geben Sie einen Namen ein und drücken Sie die Eingabetaste.</p>
-                            <div id="schueler-container" class="tag-input-container">
-                                <input type="text" id="schueler-input" placeholder="z.B. Anna..." class="tag-input">
-                            </div>
+                            <p class="text-xs form-description">Fügen Sie eine Liste von Schülern ein (z.B. aus Excel). Pro Zeile ein Schüler, Format: <strong>Nachname [Tab/Leerzeichen] Vorname</strong>.</p>
+                            <textarea id="schueler-input" class="form-textarea" placeholder="Müller	Max&#10;Mustermann	Erika" rows="5"></textarea>
                         </div>
                         <button id="schueler-anlegen-btn" class="btn btn-green" style="margin-top: 1rem;">
                             Schülerliste anlegen

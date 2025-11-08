@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const klasseSelect = document.getElementById('klasse-select');
     const neueKlasseInput = document.getElementById('neue-klasse-input');
     const neueKlasseBtn = document.getElementById('neue-klasse-btn');
+    const loescheKlasseBtn = document.getElementById('loesche-klasse-btn');
     const fachSelect = document.getElementById('fach-select');
     const neuesFachInput = document.getElementById('neues-fach-input');
     const neuesFachBtn = document.getElementById('neues-fach-btn');
@@ -37,7 +38,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const abstufungenInput = document.getElementById('abstufungen-input');
     const rasterErstellenBtn = document.getElementById('raster-erstellen-btn');
 
-    const schuelerContainer = document.getElementById('schueler-container');
     const schuelerInput = document.getElementById('schueler-input');
     const schuelerAnlegenBtn = document.getElementById('schueler-anlegen-btn');
     const klassenTabsContainer = document.getElementById('klassen-tabs-container');
@@ -121,18 +121,34 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const renderKriterienTags = setupTagInput(kriterienContainer, kriterienInput, kriterien);
     const renderAbstufungenTags = setupTagInput(abstufungenContainer, abstufungenInput, abstufungen);
-    const renderSchuelerTags = setupTagInput(schuelerContainer, schuelerInput, schueler);
 
     // --- Schüler-Logik ---
     schuelerAnlegenBtn.addEventListener('click', () => {
         const klasseName = klasseSelect.value;
         const fachName = fachSelect.value;
-        const names = schueler;
+        const schuelerText = schuelerInput.value.trim();
 
-        if (!klasseName || !fachName || names.length === 0) {
-            showNotification('Eingabefehler', 'Bitte geben Sie eine Klasse, ein Fach und mindestens einen Schülernamen ein.');
+        if (!klasseName || !fachName || schuelerText === '') {
+            showNotification('Eingabefehler', 'Bitte wählen Sie eine Klasse, ein Fach und geben Sie mindestens einen Schülernamen ein.');
             return;
         }
+
+        const namenArray = schuelerText.split('\n').map(line => {
+            const parts = line.trim().split(/\s+/); // Trennt bei Tab oder Leerzeichen
+            if (parts.length >= 2) {
+                const nachname = parts[0];
+                const vorname = parts.slice(1).join(' ');
+                return `${vorname} ${nachname}`;
+            }
+            return line.trim(); // Fallback, falls nur ein Name pro Zeile
+        }).filter(name => name);
+
+        if (namenArray.length === 0) {
+            showNotification('Eingabefehler', 'Keine gültigen Namen gefunden. Bitte überprüfen Sie das Format.');
+            return;
+        }
+
+        const names = namenArray;
 
         if (!klassen[klasseName]) {
             klassen[klasseName] = {};
@@ -269,6 +285,24 @@ document.addEventListener('DOMContentLoaded', function () {
             aktuellesFach = null;
             neueKlasseInput.value = '';
             renderAllFromState();
+        }
+    });
+
+    loescheKlasseBtn.addEventListener('click', () => {
+        const klasseZumLoeschen = klasseSelect.value;
+        if (klasseZumLoeschen && klassen[klasseZumLoeschen]) {
+            delete klassen[klasseZumLoeschen];
+
+            // Setze den aktuellen Status zurück oder wähle die nächste Klasse
+            const verbleibendeKlassen = Object.keys(klassen);
+            aktuelleKlasse = verbleibendeKlassen.length > 0 ? verbleibendeKlassen[0] : null;
+            aktuellesFach = aktuelleKlasse ? Object.keys(klassen[aktuelleKlasse])[0] || null : null;
+            aktuellerSchuelerName = null; // Schüler-Kontext zurücksetzen
+
+            renderAllFromState();
+            updateExportSelects();
+        } else {
+            showNotification('Hinweis', 'Bitte wählen Sie eine Klasse zum Löschen aus.');
         }
     });
 
@@ -469,7 +503,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const fach = klassen[aktuelleKlasse][aktuellesFach];
             Array.prototype.push.apply(schueler, fach.schueler);
         }
-        renderSchuelerTags();
 
         renderKlassenTabs();
         renderFaecherTabs();
