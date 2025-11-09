@@ -11,12 +11,12 @@ document.addEventListener('DOMContentLoaded', function () {
     "Arbeitsaufträge erfüllt"
   ];
     let abstufungen = [
-    "Noch nicht erkennbar",
-    "Ansatzweise erkennbar",
-    "Erkennbar",
-    "Deutlich ausgeprägt",
+    "Herausragend",
     "Stark ausgeprägt",
-    "Herausragend"
+    "Deutlich ausgeprägt",
+    "Erkennbar",
+    "Ansatzweise erkennbar",
+    "Noch nicht erkennbar"
   ];
     let schueler = [];
     let klassen = {}; // { "6a": { "Mathe": { schueler: ["Anna", "Ben"], bewertungen: { "Anna": [...] } } } }
@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const fachSelect = document.getElementById('fach-select');
     const neuesFachInput = document.getElementById('neues-fach-input');
     const neuesFachBtn = document.getElementById('neues-fach-btn');
+    const loescheFachBtn = document.getElementById('loesche-fach-btn');
     const kriterienContainer = document.getElementById('kriterien-container');
     const kriterienInput = document.getElementById('kriterien-input');
     const abstufungenContainer = document.getElementById('abstufungen-container');
@@ -391,6 +392,22 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    loescheFachBtn.addEventListener('click', () => {
+        const fachZumLoeschen = fachSelect.value;
+        if (aktuelleKlasse && fachZumLoeschen && klassen[aktuelleKlasse][fachZumLoeschen]) {
+            delete klassen[aktuelleKlasse][fachZumLoeschen];
+
+            const verbleibendeFaecher = Object.keys(klassen[aktuelleKlasse]);
+            aktuellesFach = verbleibendeFaecher.length > 0 ? verbleibendeFaecher[0] : null;
+            aktuellerSchuelerName = null; // Schüler-Kontext zurücksetzen
+
+            renderAllFromState();
+            updateExportSelects();
+        } else {
+            showNotification('Hinweis', 'Bitte wählen Sie ein Fach zum Löschen aus.');
+        }
+    });
+
     klasseSelect.addEventListener('change', () => {
         aktuelleKlasse = klasseSelect.value;
         const faecher = Object.keys(klassen[aktuelleKlasse]);
@@ -497,8 +514,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 const kIndex = parseInt(zelle.dataset.kriteriumIndex);
                 const bewertungObj = klassen[aktuelleKlasse][aktuellesFach].bewertungen[aktuellerSchuelerName].bewertung[kIndex];
 
-                // Zyklus: 1 -> 2 -> 3 -> 1
-                bewertungObj.gewicht = bewertungObj.gewicht === 1 ? 2 : bewertungObj.gewicht === 2 ? 3 : 1;
+                // Zyklus: 1 -> 2 -> 3 -> 0 -> 1
+                bewertungObj.gewicht = bewertungObj.gewicht === 1 ? 2 : bewertungObj.gewicht === 2 ? 3 : bewertungObj.gewicht === 3 ? 0 : 1;
 
                 // UI direkt aktualisieren und neu berechnen
                 updateRasterAnsicht();
@@ -540,23 +557,27 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // --- Auswertungs-Logik ---
-    const farben = ["#000000", "#ef4444", "#f97316", "#facc15", "#38bdf8", "#22c55e"];
+    const farben = ["#22c55e", "#38bdf8", "#facc15", "#f97316", "#ef4444", "#000000"];
 
     function berechneNotenvorschlag(bewertungen) {
-        const benoteteKriterien = bewertungen.filter(b => b.wert !== null);
-        if (benoteteKriterien.length < kriterien.length) {
-            return null; // Nur berechnen, wenn alles bewertet ist
+        const gewichteteKriterien = bewertungen.filter(b => b.gewicht > 0);
+        const benoteteGewichteteKriterien = gewichteteKriterien.filter(b => b.wert !== null);
+
+        if (gewichteteKriterien.length > 0 && benoteteGewichteteKriterien.length < gewichteteKriterien.length) {
+            return null; // Not all weighted criteria have been graded
+        }
+
+        if (benoteteGewichteteKriterien.length === 0) {
+            return null; // No criteria to average
         }
 
         let gewichteteSumme = 0;
         let gesamtGewicht = 0;
 
-        bewertungen.forEach(b => {
-            if (b.wert !== null) {
-                const note = abstufungen.length - b.wert;
-                gewichteteSumme += note * b.gewicht;
-                gesamtGewicht += b.gewicht;
-            }
+        benoteteGewichteteKriterien.forEach(b => {
+            const note = b.wert + 1;
+            gewichteteSumme += note * b.gewicht;
+            gesamtGewicht += b.gewicht;
         });
 
         if (gesamtGewicht === 0) return null;
@@ -566,7 +587,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateAuswertung() {
-        if (!aktuelleKlasse || !aktuellesFach || !aktuellerSchuelerName || !klassen[aktuelleKlasse][aktuellesFach].bewertungen[aktuellerSchuelerName] || klassen[aktuelleKlasse][aktuellesFach].bewertungen[aktuellerSchuelerName].bewertung.every(b => b === null)) {
+        if (!aktuelleKlasse || !aktuellesFach || !aktuellerSchuelerName || !klassen[aktuelleKlasse][aktuellesFach].bewertungen[aktuellerSchuelerName] || klassen[aktuelleKlasse][aktuellesFach].bewertungen[aktuellerSchuelerName].bewertung.every(b => b.wert === null)) {
             auswertungContainer.classList.add('hidden');
             auswertungPlatzhalter.classList.remove('hidden');
             return;
@@ -590,7 +611,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (bewertungObj.wert === null || bewertungObj.wert >= abstufungen.length) return;
             const bewertungIndex = bewertungObj.wert;
 
-            const prozent = (bewertungIndex + 1) / abstufungen.length * 100;
+            const prozent = (abstufungen.length - bewertungIndex) / abstufungen.length * 100;
             const farbe = farben[bewertungIndex % farben.length];
 
             const barContainer = document.createElement('div');
