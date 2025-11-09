@@ -195,8 +195,18 @@ document.addEventListener('DOMContentLoaded', function () {
         return renderTags;
     }
 
-    const renderKriterienTags = setupTagInput(kriterienContainer, kriterienInput, kriterien);
+    let renderKriterienTags = () => {}; // Initialisiere als leere Funktion
     const renderAbstufungenTags = setupTagInput(abstufungenContainer, abstufungenInput, abstufungen);
+
+    function updateKriterienInput() {
+        if (aktuelleKlasse && aktuellesFach && klassen[aktuelleKlasse]?.[aktuellesFach]) {
+            const fachKriterien = klassen[aktuelleKlasse][aktuellesFach].kriterien;
+            renderKriterienTags = setupTagInput(kriterienContainer, kriterienInput, fachKriterien);
+        } else {
+            // Zeige die globalen Kriterien an, wenn kein Fach ausgewählt ist, oder deaktiviere das Feld
+            renderKriterienTags = setupTagInput(kriterienContainer, kriterienInput, kriterien);
+        }
+    }
 
     // --- Schüler-Logik ---
     schuelerAnlegenBtn.addEventListener('click', () => {
@@ -237,9 +247,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const neueSchueler = names.filter(name => !fach.schueler.includes(name));
         fach.schueler = [...fach.schueler, ...neueSchueler].sort();
 
+        const anzahlKriterien = fach.kriterien ? fach.kriterien.length : kriterien.length;
         neueSchueler.forEach(name => {
              fach.bewertungen[name] = {
-                bewertung: Array.from({ length: kriterien.length }, () => ({ wert: null, gewicht: 1 }))
+                bewertung: Array.from({ length: anzahlKriterien }, () => ({ wert: null, gewicht: 1 }))
             };
         });
 
@@ -385,7 +396,11 @@ document.addEventListener('DOMContentLoaded', function () {
     neuesFachBtn.addEventListener('click', () => {
         const neuesFach = neuesFachInput.value.trim();
         if (neuesFach && aktuelleKlasse && !klassen[aktuelleKlasse][neuesFach]) {
-            klassen[aktuelleKlasse][neuesFach] = { schueler: [], bewertungen: {} };
+            klassen[aktuelleKlasse][neuesFach] = {
+                schueler: [],
+                bewertungen: {},
+                kriterien: [...kriterien] // Kopiert die aktuellen globalen Kriterien als Startpunkt
+            };
             aktuellesFach = neuesFach;
             neuesFachInput.value = '';
             renderAllFromState();
@@ -423,17 +438,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Raster-Logik ---
     rasterErstellenBtn.addEventListener('click', () => {
-        if (kriterien.length === 0 || abstufungen.length === 0) {
+        const fachKriterien = klassen[aktuelleKlasse]?.[aktuellesFach]?.kriterien || kriterien;
+        if (fachKriterien.length === 0 || abstufungen.length === 0) {
             showNotification('Eingabefehler', 'Bitte definieren Sie mindestens ein Kriterium und eine Abstufung.');
             return;
         }
 
+        // Alle Bewertungen an die möglicherweise geänderte Kriterienlänge anpassen
         Object.values(klassen).forEach(fachMap => {
             Object.values(fachMap).forEach(fach => {
+                const aktuelleKriterienAnzahl = fach.kriterien.length;
                 Object.values(fach.bewertungen).forEach(schuelerBewertung => {
-                    // Stelle sicher, dass für jedes Kriterium ein Bewertungsobjekt existiert
-                    while (schuelerBewertung.bewertung.length < kriterien.length) {
+                    // Füge fehlende Bewertungen hinzu
+                    while (schuelerBewertung.bewertung.length < aktuelleKriterienAnzahl) {
                         schuelerBewertung.bewertung.push({ wert: null, gewicht: 1 });
+                    }
+                    // Entferne überzählige Bewertungen
+                    while (schuelerBewertung.bewertung.length > aktuelleKriterienAnzahl) {
+                        schuelerBewertung.bewertung.pop();
                     }
                 });
             });
@@ -444,7 +466,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     function erstelleRaster() {
-        if (kriterien.length === 0 || abstufungen.length === 0 || !aktuelleKlasse || !aktuellesFach || !aktuellerSchuelerName) {
+        const fach = klassen[aktuelleKlasse]?.[aktuellesFach];
+        if (!fach || fach.kriterien.length === 0 || abstufungen.length === 0 || !aktuellerSchuelerName) {
             rasterContainer.classList.add('hidden');
             rasterPlatzhalter.classList.remove('hidden');
             return;
@@ -465,8 +488,8 @@ document.addEventListener('DOMContentLoaded', function () {
         kompetenzRaster.appendChild(thead);
 
         const tbody = document.createElement('tbody');
-        const aktuelleBewertungen = klassen[aktuelleKlasse][aktuellesFach].bewertungen[aktuellerSchuelerName].bewertung;
-        kriterien.forEach((kriterium, kIndex) => {
+        const aktuelleBewertungen = fach.bewertungen[aktuellerSchuelerName].bewertung;
+        fach.kriterien.forEach((kriterium, kIndex) => {
             const gewicht = aktuelleBewertungen[kIndex] ? aktuelleBewertungen[kIndex].gewicht : 1;
             let row = `<tr>
                         <td class="font-medium kriterium-zelle" data-kriterium-index="${kIndex}">
@@ -606,9 +629,10 @@ document.addEventListener('DOMContentLoaded', function () {
             notenvorschlagSpan.textContent = '--';
         }
 
-        kriterien.forEach((kriterium, kIndex) => {
+        const fachKriterien = klassen[aktuelleKlasse][aktuellesFach].kriterien;
+        fachKriterien.forEach((kriterium, kIndex) => {
             const bewertungObj = aktuelleBewertung[kIndex];
-            if (bewertungObj.wert === null || bewertungObj.wert >= abstufungen.length) return;
+            if (!bewertungObj || bewertungObj.wert === null || bewertungObj.wert >= abstufungen.length) return;
             const bewertungIndex = bewertungObj.wert;
 
             const prozent = (abstufungen.length - bewertungIndex) / abstufungen.length * 100;
@@ -651,7 +675,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Save & Load Logic ---
     function renderAllFromState() {
-        renderKriterienTags();
+        updateKriterienInput();
         renderAbstufungenTags();
         updateKlasseSelect();
         updateFachSelect();
@@ -674,7 +698,8 @@ document.addEventListener('DOMContentLoaded', function () {
             showNotification('Hinweis', 'Es sind keine Daten zum Speichern vorhanden.');
             return;
         }
-        const state = { kriterien, abstufungen, klassen };
+        // Das globale `kriterien` wird nicht mehr benötigt, da es pro Fach gespeichert ist.
+        const state = { abstufungen, klassen };
         const dataStr = JSON.stringify(state, null, 2);
         const dataBlob = new Blob([dataStr], { type: 'application/json' });
         const url = URL.createObjectURL(dataBlob);
@@ -699,23 +724,44 @@ document.addEventListener('DOMContentLoaded', function () {
         reader.onload = (e) => {
             try {
                 const data = JSON.parse(e.target.result);
-                if (data.kriterien && data.abstufungen && data.klassen) {
-                    kriterien.length = 0;
-                    abstufungen.length = 0;
-                    Array.prototype.push.apply(kriterien, data.kriterien);
-                    Array.prototype.push.apply(abstufungen, data.abstufungen);
-                    klassen = data.klassen;
 
-                    aktuelleKlasse = Object.keys(klassen)[0] || null;
-                    aktuellesFach = aktuelleKlasse ? Object.keys(klassen[aktuelleKlasse])[0] || null : null;
-                    aktuellerSchuelerName = aktuellesFach ? klassen[aktuelleKlasse][aktuellesFach].schueler[0] || null : null;
-
-                    renderAllFromState();
-                    updateExportSelects();
-                    showNotification('Erfolg', 'Der Bearbeitungsstand wurde erfolgreich geladen.');
-                } else {
+                // Prüfen, ob das Laden erfolgreich war und die notwendigen Daten vorhanden sind
+                if (!data.klassen || !data.abstufungen) {
                     showNotification('Fehler', 'Die JSON-Datei hat ein ungültiges Format.');
+                    return;
                 }
+
+                // Globales `abstufungen` aktualisieren
+                abstufungen.length = 0;
+                Array.prototype.push.apply(abstufungen, data.abstufungen);
+
+                // `klassen` Objekt übernehmen
+                klassen = data.klassen;
+
+                // Datenmigration für ältere Speicherstände
+                if (data.kriterien) {
+                    kriterien.length = 0;
+                    Array.prototype.push.apply(kriterien, data.kriterien);
+
+                    // Füge das `kriterien` Array zu jedem Fach hinzu, wenn es fehlt
+                    Object.values(klassen).forEach(fachMap => {
+                        Object.values(fachMap).forEach(fach => {
+                            if (!fach.kriterien) {
+                                fach.kriterien = [...data.kriterien];
+                            }
+                        });
+                    });
+                }
+
+
+                aktuelleKlasse = Object.keys(klassen)[0] || null;
+                aktuellesFach = aktuelleKlasse ? Object.keys(klassen[aktuelleKlasse])[0] || null : null;
+                aktuellerSchuelerName = aktuellesFach ? klassen[aktuelleKlasse][aktuellesFach].schueler[0] || null : null;
+
+                renderAllFromState();
+                updateExportSelects();
+                showNotification('Erfolg', 'Der Bearbeitungsstand wurde erfolgreich geladen.');
+
             } catch (error) {
                 console.error('Error parsing JSON:', error);
                 showNotification('Fehler', 'Die Datei konnte nicht gelesen werden. Stellen Sie sicher, dass es eine gültige JSON-Datei ist.');
@@ -863,11 +909,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Vorlagen-Logik ---
     saveVorlageBtn.addEventListener('click', () => {
-        if (kriterien.length === 0 || abstufungen.length === 0) {
+        const fachKriterien = klassen[aktuelleKlasse]?.[aktuellesFach]?.kriterien || kriterien;
+        if (fachKriterien.length === 0 || abstufungen.length === 0) {
             showNotification('Hinweis', 'Es sind keine Kriterien oder Abstufungen zum Speichern vorhanden.');
             return;
         }
-        const vorlage = { kriterien, abstufungen };
+        const vorlage = { kriterien: fachKriterien, abstufungen };
         const dataStr = JSON.stringify(vorlage, null, 2);
         const dataBlob = new Blob([dataStr], {type: 'application/json'});
         const url = URL.createObjectURL(dataBlob);
@@ -909,17 +956,18 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const vorlage = geladeneVorlagen[ausgewaehlterName];
+        const zielKriterien = klassen[aktuelleKlasse]?.[aktuellesFach]?.kriterien || kriterien;
 
-        kriterien.length = 0;
+        zielKriterien.length = 0;
         abstufungen.length = 0;
-        Array.prototype.push.apply(kriterien, vorlage.kriterien);
+        Array.prototype.push.apply(zielKriterien, vorlage.kriterien);
         Array.prototype.push.apply(abstufungen, vorlage.abstufungen);
 
-        renderKriterienTags();
+        updateKriterienInput(); // Aktualisiert die Anzeige für die Kriterien
         renderAbstufungenTags();
 
         if (aktuellerSchuelerName) {
-            rasterErstellenBtn.click();
+            rasterErstellenBtn.click(); // Um das Raster und die Bewertungen zu aktualisieren
         }
 
         showNotification('Erfolg', `Die Vorlage "${ausgewaehlterName}" wurde erfolgreich geladen.`);
