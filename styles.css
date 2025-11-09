@@ -293,9 +293,14 @@ h1, h2, h3, h4, h5, h6 {
 }
 .combo-btn {
     width: auto;
-    padding: 0.5rem;
+    padding: 0.75rem;
     line-height: 1;
-    font-size: 1.25rem;
+    font-size: 1.5rem;
+}
+
+.combo-box .form-select, .combo-box .tag-input {
+    padding: 0.75rem;
+    font-size: 1rem;
 }
 
 #schueler-container {
@@ -339,12 +344,12 @@ h1, h2, h3, h4, h5, h6 {
     font-weight: 600;
     transform: scale(1.05);
 }
-.grid-cell.selected-color-0 { background-color: #22c55e; } /* Herausragend: grün */
-.grid-cell.selected-color-1 { background-color: #38bdf8; } /* Deutlich ausgeprägt: hellblau */
-.grid-cell.selected-color-2 { background-color: #facc15; } /* Erkennbar: gelb */
-.grid-cell.selected-color-3 { background-color: #f97316; } /* Ansatzweise erkennbar: orange */
-.grid-cell.selected-color-4 { background-color: #ef4444; } /* Noch nicht erkennbar: rot */
-.grid-cell.selected-color-5 { background-color: #000000; } /* Ungenügend: schwarz */
+.grid-cell.selected-color-0 { background-color: #22c55e; }
+.grid-cell.selected-color-1 { background-color: #38bdf8; }
+.grid-cell.selected-color-2 { background-color: #facc15; }
+.grid-cell.selected-color-3 { background-color: #f97316; }
+.grid-cell.selected-color-4 { background-color: #ef4444; }
+.grid-cell.selected-color-5 { background-color: #000000; }
 .schueler-tab {
     padding: 0.5rem 1rem;
     border: 1px solid var(--color-gray-300);
