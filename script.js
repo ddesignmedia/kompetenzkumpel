@@ -61,6 +61,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const loadStateBtn = document.getElementById('load-state-btn');
     const loadStateInput = document.getElementById('load-state-input');
     const exportPdfBtn = document.getElementById('export-pdf-btn');
+    const exportGradesBtn = document.getElementById('export-grades-btn');
     const exportKlasseSelect = document.getElementById('export-klasse-select');
     const exportFachSelect = document.getElementById('export-fach-select');
     const saveVorlageBtn = document.getElementById('save-vorlage-btn');
@@ -887,6 +888,12 @@ document.addEventListener('DOMContentLoaded', function () {
             let position = margin;
             doc.addImage(imgData, 'JPEG', margin, position, pageWidth - margin * 2, imgHeight);
 
+            // Add signature line at the bottom
+            const pageHeight = doc.internal.pageSize.getHeight();
+            doc.setFontSize(10);
+            doc.text("Bitte Kenntnisnahme bestätigen:", margin, pageHeight - 25);
+            doc.line(margin, pageHeight - 20, pageWidth - margin, pageHeight - 20); // Signature line
+
             document.body.removeChild(tempContainer);
         }
 
@@ -903,6 +910,51 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     exportPdfBtn.addEventListener('click', exportAllToPdf);
+
+    async function exportGradesList() {
+        const klasseName = exportKlasseSelect.value;
+        const fachName = exportFachSelect.value;
+
+        if (!klasseName || !fachName || !klassen[klasseName] || !klassen[klasseName][fachName]) {
+            showNotification('Hinweis', 'Bitte wählen Sie eine gültige Klasse und ein Fach für den Export aus.');
+            return;
+        }
+
+        exportGradesBtn.disabled = true;
+        exportGradesBtn.textContent = 'Exportiere...';
+
+        const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const margin = 15;
+        let y = margin;
+
+        doc.setFontSize(18);
+        doc.text(`Notenliste für Klasse: ${klasseName} - Fach: ${fachName}`, margin, y);
+        y += 15;
+
+        const fach = klassen[klasseName][fachName];
+        const tableData = fach.schueler.map(schuelerName => {
+            const bewertungen = fach.bewertungen[schuelerName].bewertung;
+            const note = berechneNotenvorschlag(bewertungen) || 'N/A';
+            return [schuelerName, note];
+        });
+
+        doc.autoTable({
+            startY: y,
+            head: [['Schülername', 'Note']],
+            body: tableData,
+            theme: 'striped',
+            headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+            margin: { top: y }
+        });
+
+        doc.save(`Notenliste_${klasseName}_${fachName}_${new Date().toISOString().slice(0,10)}.pdf`);
+
+        exportGradesBtn.disabled = false;
+        exportGradesBtn.textContent = 'Notenliste';
+    }
+
+    exportGradesBtn.addEventListener('click', exportGradesList);
 
     // Initial render on load
     renderAllFromState();
