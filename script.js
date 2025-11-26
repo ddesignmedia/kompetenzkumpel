@@ -214,13 +214,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const renderAbstufungenTags = setupTagInput(abstufungenContainer, abstufungenInput, abstufungen);
 
     function updateKriterienInput() {
+        let activeKriterienArray;
         if (aktuelleKlasse && aktuellesFach && klassen[aktuelleKlasse]?.[aktuellesFach]) {
-            const fachKriterien = klassen[aktuelleKlasse][aktuellesFach].kriterien;
-            renderKriterienTags = setupTagInput(kriterienContainer, kriterienInput, fachKriterien);
+            activeKriterienArray = klassen[aktuelleKlasse][aktuellesFach].kriterien;
         } else {
-            // Zeige die globalen Kriterien an, wenn kein Fach ausgewählt ist, oder deaktiviere das Feld
-            renderKriterienTags = setupTagInput(kriterienContainer, kriterienInput, kriterien);
+            // Directly use the global kriterien array as the source of truth if no subject is selected.
+            activeKriterienArray = kriterien;
         }
+        renderKriterienTags = setupTagInput(kriterienContainer, kriterienInput, activeKriterienArray);
     }
 
     // --- Schüler-Logik ---
@@ -453,28 +454,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Raster-Logik ---
     rasterErstellenBtn.addEventListener('click', () => {
-        const fachKriterien = klassen[aktuelleKlasse]?.[aktuellesFach]?.kriterien || kriterien;
-        if (fachKriterien.length === 0 || abstufungen.length === 0) {
+        const fach = klassen[aktuelleKlasse]?.[aktuellesFach];
+        // This now correctly uses the same logic as `updateKriterienInput` to determine the active array.
+        const activeKriterienArray = (fach) ? fach.kriterien : kriterien;
+
+        if (activeKriterienArray.length === 0 || abstufungen.length === 0) {
             showNotification('Eingabefehler', 'Bitte definieren Sie mindestens ein Kriterium und eine Abstufung.');
             return;
         }
-
-        // Alle Bewertungen an die möglicherweise geänderte Kriterienlänge anpassen
-        Object.values(klassen).forEach(fachMap => {
-            Object.values(fachMap).forEach(fach => {
-                const aktuelleKriterienAnzahl = fach.kriterien.length;
-                Object.values(fach.bewertungen).forEach(schuelerBewertung => {
-                    // Füge fehlende Bewertungen hinzu
-                    while (schuelerBewertung.bewertung.length < aktuelleKriterienAnzahl) {
-                        schuelerBewertung.bewertung.push({ wert: null, gewicht: 1 });
-                    }
-                    // Entferne überzählige Bewertungen
-                    while (schuelerBewertung.bewertung.length > aktuelleKriterienAnzahl) {
-                        schuelerBewertung.bewertung.pop();
-                    }
-                });
-            });
-        });
 
         erstelleRaster();
         updateAuswertung();
