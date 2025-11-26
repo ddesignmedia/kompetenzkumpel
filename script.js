@@ -1,15 +1,15 @@
 document.addEventListener('DOMContentLoaded', function () {
     // State Management
     let kriterien = [
-    "Aufmerksames Zuhören",
-    "Konstruktive Beiträge",
-    "Kontinuierliche Beteiligung",
-    "Sorgfältige Arbeitsweise",
-    "Selbstständiges Arbeiten",
-    "Respektvoller Umgang",
-    "Tabletnutzung sinnvoll",
-    "Arbeitsaufträge erfüllt"
-  ];
+        { text: "Aufmerksames Zuhören", gewicht: 1 },
+        { text: "Konstruktive Beiträge", gewicht: 1 },
+        { text: "Kontinuierliche Beteiligung", gewicht: 1 },
+        { text: "Sorgfältige Arbeitsweise", gewicht: 1 },
+        { text: "Selbstständiges Arbeiten", gewicht: 1 },
+        { text: "Respektvoller Umgang", gewicht: 1 },
+        { text: "Tabletnutzung sinnvoll", gewicht: 1 },
+        { text: "Arbeitsaufträge erfüllt", gewicht: 1 }
+    ];
     let abstufungen = [
     "Herausragend",
     "Stark ausgeprägt",
@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
     // --- Tag Input Logik ---
-    function setupTagInput(container, input, dataArray) {
+    function setupTagInput(container, input, dataArray, property = null) {
         let draggedIndex = -1;
 
         function renderTags() {
@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function () {
             dataArray.forEach((item, index) => {
                 const tag = document.createElement('span');
                 tag.className = 'tag';
-                tag.textContent = item;
+                tag.textContent = property ? item[property] : item;
                 tag.draggable = true;
                 tag.dataset.index = index;
 
@@ -107,7 +107,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 tag.addEventListener('dragstart', (e) => {
                     draggedIndex = index;
                     e.dataTransfer.effectAllowed = 'move';
-                    // Kleiner Timeout, damit der Browser das Element "greifen" kann
                     setTimeout(() => e.target.classList.add('dragging'), 0);
                 });
 
@@ -115,14 +114,27 @@ document.addEventListener('DOMContentLoaded', function () {
                     e.target.classList.remove('dragging');
                 });
 
+                if (property === 'text') { // Nur für Kriterien
+                    tag.appendChild(document.createTextNode(' ')); // Add a space for styling
+                    const gewichtBtn = document.createElement('span');
+                    gewichtBtn.className = 'gewicht-indicator-main';
+                    gewichtBtn.textContent = `x${item.gewicht}`;
+                    gewichtBtn.title = 'Klick, um die Standard-Gewichtung für dieses Kriterium zu ändern.';
+                    gewichtBtn.onclick = (e) => {
+                        e.stopPropagation(); // Verhindert, dass Drag-Events ausgelöst werden
+                        // Zyklus: 1 -> 2 -> 3 -> 0 -> 1
+                        item.gewicht = (item.gewicht + 1) % 4;
+                        renderTags();
+                    };
+                    tag.appendChild(gewichtBtn);
+                }
+
                 const removeBtn = document.createElement('button');
                 removeBtn.innerHTML = '&times;';
                 removeBtn.onclick = () => {
+                    // The sync logic is now handled by the "Raster erstellen" button
                     dataArray.splice(index, 1);
                     renderTags();
-                    if (container === abstufungenContainer) {
-                        erstelleRaster();
-                    }
                 };
                 tag.appendChild(removeBtn);
                 container.insertBefore(tag, input);
@@ -144,33 +156,31 @@ document.addEventListener('DOMContentLoaded', function () {
 
         container.addEventListener('drop', (e) => {
             e.preventDefault();
-            const target = e.target.closest('.tag');
-            if (target && draggedIndex !== -1) {
-                const targetIndex = parseInt(target.dataset.index);
-
-                // Element verschieben
+            const dragging = container.querySelector('.dragging');
+            // Ensure both the dragging element and the draggedIndex are valid
+            if (dragging && draggedIndex !== -1) {
+                const afterElement = getDragAfterElement(container, e.clientY);
                 const [draggedItem] = dataArray.splice(draggedIndex, 1);
 
-                // Den neuen Index finden, da sich die Indizes verschoben haben könnten
-                const newTargetIndex = Array.from(container.querySelectorAll('.tag:not(.dragging)')).indexOf(target);
-
-                dataArray.splice(newTargetIndex, 0, draggedItem);
-
-                // UI aktualisieren
-                renderTags();
-
-                // Wenn es die Abstufungen sind, das Raster neu zeichnen
-                if (container === abstufungenContainer) {
-                    erstelleRaster();
-                    updateAuswertung();
+                if (afterElement == null) {
+                    // Dropped at the end of the list
+                    dataArray.push(draggedItem);
+                } else {
+                    // Dropped before another element
+                    const newIndex = Array.from(container.querySelectorAll('.tag:not(.dragging)')).indexOf(afterElement);
+                    dataArray.splice(newIndex, 0, draggedItem);
                 }
+
+                // The complex logic of syncing student evaluations is removed.
+                // The "Raster erstellen" button will now handle all data synchronization,
+                // including reordering, based on the criteria text.
+                renderTags();
             }
-            draggedIndex = -1;
+            draggedIndex = -1; // Reset dragged index
         });
 
         function getDragAfterElement(container, y) {
             const draggableElements = [...container.querySelectorAll('.tag:not(.dragging)')];
-
             return draggableElements.reduce((closest, child) => {
                 const box = child.getBoundingClientRect();
                 const offset = y - box.top - box.height / 2;
@@ -185,28 +195,30 @@ document.addEventListener('DOMContentLoaded', function () {
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && input.value.trim() !== '') {
                 e.preventDefault();
-                if (!dataArray.includes(input.value.trim())) {
-                   dataArray.push(input.value.trim());
+                const value = input.value.trim();
+                const exists = property ? dataArray.some(item => item[property] === value) : dataArray.includes(value);
+
+                if (!exists) {
+                    const newItem = property ? { [property]: value, gewicht: 1 } : value;
+                    dataArray.push(newItem);
+                    // The sync logic is now handled by the "Raster erstellen" button
+                    input.value = '';
+                    renderTags();
                 }
-                input.value = '';
-                renderTags();
             }
         });
+
         renderTags();
         return renderTags;
     }
+
 
     let renderKriterienTags = () => {}; // Initialisiere als leere Funktion
     const renderAbstufungenTags = setupTagInput(abstufungenContainer, abstufungenInput, abstufungen);
 
     function updateKriterienInput() {
-        if (aktuelleKlasse && aktuellesFach && klassen[aktuelleKlasse]?.[aktuellesFach]) {
-            const fachKriterien = klassen[aktuelleKlasse][aktuellesFach].kriterien;
-            renderKriterienTags = setupTagInput(kriterienContainer, kriterienInput, fachKriterien);
-        } else {
-            // Zeige die globalen Kriterien an, wenn kein Fach ausgewählt ist, oder deaktiviere das Feld
-            renderKriterienTags = setupTagInput(kriterienContainer, kriterienInput, kriterien);
-        }
+        const kriterienArray = klassen[aktuelleKlasse]?.[aktuellesFach]?.kriterien || kriterien;
+        renderKriterienTags = setupTagInput(kriterienContainer, kriterienInput, kriterienArray, 'text');
     }
 
     // --- Schüler-Logik ---
@@ -223,8 +235,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const namenArray = schuelerText.split('\n').map(line => {
             const parts = line.trim().split(/\s+/); // Trennt bei Tab oder Leerzeichen
             if (parts.length >= 2) {
-                const nachname = parts[0];
-                const vorname = parts.slice(1).join(' ');
+                const nachname = parts.pop(); // Letztes Element als Nachname
+                const vorname = parts.join(' '); // Rest als Vorname
                 return `${vorname} ${nachname}`;
             }
             return line.trim(); // Fallback, falls nur ein Name pro Zeile
@@ -248,10 +260,15 @@ document.addEventListener('DOMContentLoaded', function () {
         const neueSchueler = names.filter(name => !fach.schueler.includes(name));
         fach.schueler = [...fach.schueler, ...neueSchueler].sort();
 
-        const anzahlKriterien = fach.kriterien ? fach.kriterien.length : kriterien.length;
+        const fachKriterien = fach.kriterien || kriterien;
+        const kriterienTexte = fachKriterien.map(k => k.text);
         neueSchueler.forEach(name => {
-             fach.bewertungen[name] = {
-                bewertung: Array.from({ length: anzahlKriterien }, () => ({ wert: null, gewicht: 1 }))
+            fach.bewertungen[name] = {
+                bewertung: fachKriterien.map(kriterium => ({
+                    wert: null,
+                    gewicht: kriterium.gewicht
+                })),
+                kriterienTexte: kriterienTexte // Store the initial criteria texts
             };
         });
 
@@ -400,7 +417,8 @@ document.addEventListener('DOMContentLoaded', function () {
             klassen[aktuelleKlasse][neuesFach] = {
                 schueler: [],
                 bewertungen: {},
-                kriterien: [...kriterien] // Kopiert die aktuellen globalen Kriterien als Startpunkt
+                // Kriterien tief kopieren, um Unabhängigkeit zu gewährleisten
+                kriterien: kriterien.map(k => ({...k}))
             };
             aktuellesFach = neuesFach;
             neuesFachInput.value = '';
@@ -439,31 +457,53 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Raster-Logik ---
     rasterErstellenBtn.addEventListener('click', () => {
-        const fachKriterien = klassen[aktuelleKlasse]?.[aktuellesFach]?.kriterien || kriterien;
-        if (fachKriterien.length === 0 || abstufungen.length === 0) {
-            showNotification('Eingabefehler', 'Bitte definieren Sie mindestens ein Kriterium und eine Abstufung.');
+        const fach = klassen[aktuelleKlasse]?.[aktuellesFach];
+        if (!fach || fach.kriterien.length === 0 || abstufungen.length === 0) {
+            showNotification('Eingabefehler', 'Bitte definieren Sie mindestens ein Kriterium und eine Abstufung oder wählen Sie ein Fach aus.');
             return;
         }
 
-        // Alle Bewertungen an die möglicherweise geänderte Kriterienlänge anpassen
-        Object.values(klassen).forEach(fachMap => {
-            Object.values(fachMap).forEach(fach => {
-                const aktuelleKriterienAnzahl = fach.kriterien.length;
-                Object.values(fach.bewertungen).forEach(schuelerBewertung => {
-                    // Füge fehlende Bewertungen hinzu
-                    while (schuelerBewertung.bewertung.length < aktuelleKriterienAnzahl) {
-                        schuelerBewertung.bewertung.push({ wert: null, gewicht: 1 });
-                    }
-                    // Entferne überzählige Bewertungen
-                    while (schuelerBewertung.bewertung.length > aktuelleKriterienAnzahl) {
-                        schuelerBewertung.bewertung.pop();
-                    }
-                });
+        // More robust synchronization of student evaluations with the master criteria list
+        const fachKriterien = fach.kriterien;
+        const neueKriterienTexte = fachKriterien.map(k => k.text);
+
+        Object.values(fach.bewertungen).forEach(schuelerBewertung => {
+            const alteBewertungenMap = new Map();
+            // Use the student's specific text reference array if it exists, otherwise it's the first sync
+            const alteKriterienTexte = schuelerBewertung.kriterienTexte || [];
+
+            schuelerBewertung.bewertung.forEach((bewertung, index) => {
+                const alterText = alteKriterienTexte[index];
+                if (alterText) {
+                    alteBewertungenMap.set(alterText, bewertung);
+                }
             });
+
+            const neueBewertung = neueKriterienTexte.map((neuerText, index) => {
+                const alteBewertung = alteBewertungenMap.get(neuerText);
+                if (alteBewertung) {
+                    // Kriterium gab es schon, Gewichtung aus der Hauptliste übernehmen
+                    return {
+                        wert: alteBewertung.wert,
+                        gewicht: fachKriterien[index].gewicht
+                    };
+                } else {
+                    // Neues Kriterium, Standard-Bewertung erstellen
+                    return {
+                        wert: null,
+                        gewicht: fachKriterien[index].gewicht
+                    };
+                }
+            });
+
+            schuelerBewertung.bewertung = neueBewertung;
+            // Update the text reference for future syncs
+            schuelerBewertung.kriterienTexte = neueKriterienTexte;
         });
 
         erstelleRaster();
         updateAuswertung();
+        showNotification('Erfolg', 'Das Raster wurde aktualisiert und die Standard-Gewichtungen wurden auf alle Schüler angewendet.');
     });
 
     function erstelleRaster() {
@@ -494,7 +534,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const gewicht = aktuelleBewertungen[kIndex] ? aktuelleBewertungen[kIndex].gewicht : 1;
             let row = `<tr>
                         <td class="font-medium kriterium-zelle" data-kriterium-index="${kIndex}">
-                            ${kriterium}
+                            ${kriterium.text}
                             <span class="gewicht-indicator">x${gewicht}</span>
                         </td>`;
             abstufungen.forEach((_, aIndex) => {
@@ -645,7 +685,7 @@ document.addEventListener('DOMContentLoaded', function () {
             labelContainer.className = 'progress-bar-label-container';
 
             const kriteriumLabel = document.createElement('span');
-            kriteriumLabel.textContent = kriterium;
+            kriteriumLabel.textContent = kriterium.text;
             kriteriumLabel.className = 'progress-bar-kriterium';
 
             const stufeLabel = document.createElement('span');
@@ -739,20 +779,44 @@ document.addEventListener('DOMContentLoaded', function () {
                 // `klassen` Objekt übernehmen
                 klassen = data.klassen;
 
-                // Datenmigration für ältere Speicherstände
+                // Datenmigration für Kriterien (global und pro Fach)
+                function migrateKriterien(kriterienArray) {
+                    if (!kriterienArray || kriterienArray.length === 0) return [];
+                    // Check if the first element is a string to decide on migration
+                    if (typeof kriterienArray[0] === 'string') {
+                        return kriterienArray.map(k => ({ text: k, gewicht: 1 }));
+                    }
+                    // Already in the new format
+                    return kriterienArray;
+                }
+
                 if (data.kriterien) {
                     kriterien.length = 0;
-                    Array.prototype.push.apply(kriterien, data.kriterien);
-
-                    // Füge das `kriterien` Array zu jedem Fach hinzu, wenn es fehlt
-                    Object.values(klassen).forEach(fachMap => {
-                        Object.values(fachMap).forEach(fach => {
-                            if (!fach.kriterien) {
-                                fach.kriterien = [...data.kriterien];
-                            }
-                        });
-                    });
+                    Array.prototype.push.apply(kriterien, migrateKriterien(data.kriterien));
                 }
+
+                Object.values(klassen).forEach(fachMap => {
+                    Object.values(fachMap).forEach(fach => {
+                        // Migrate criteria structure first
+                        if (fach.kriterien) {
+                            fach.kriterien = migrateKriterien(fach.kriterien);
+                        } else if (data.kriterien) {
+                            fach.kriterien = migrateKriterien(data.kriterien);
+                        }
+
+                        // Then, ensure `kriterienTexte` exists for each student evaluation
+                        const fachKriterien = fach.kriterien || [];
+                        const kriterienTexte = fachKriterien.map(k => k.text);
+                        if (fach.bewertungen) {
+                             Object.values(fach.bewertungen).forEach(schuelerBewertung => {
+                                if (!schuelerBewertung.kriterienTexte) {
+                                    schuelerBewertung.kriterienTexte = kriterienTexte;
+                                }
+                            });
+                        }
+                    });
+                });
+
 
 
                 aktuelleKlasse = Object.keys(klassen)[0] || null;
@@ -1010,10 +1074,18 @@ document.addEventListener('DOMContentLoaded', function () {
         const vorlage = geladeneVorlagen[ausgewaehlterName];
         const zielKriterien = klassen[aktuelleKlasse]?.[aktuellesFach]?.kriterien || kriterien;
 
+        let importierteKriterien = vorlage.kriterien;
+        // Backwards compatibility for old templates with string arrays
+        if (importierteKriterien && importierteKriterien.length > 0 && (typeof importierteKriterien[0] === 'string' || !importierteKriterien[0].hasOwnProperty('gewicht'))) {
+             importierteKriterien = importierteKriterien.map(k => (typeof k === 'string' ? { text: k, gewicht: 1 } : { ...k, gewicht: k.gewicht || 1 }));
+        }
+
+
         zielKriterien.length = 0;
         abstufungen.length = 0;
-        Array.prototype.push.apply(zielKriterien, vorlage.kriterien);
-        Array.prototype.push.apply(abstufungen, vorlage.abstufungen);
+        Array.prototype.push.apply(zielKriterien, importierteKriterien || []);
+        Array.prototype.push.apply(abstufungen, vorlage.abstufungen || []);
+
 
         updateKriterienInput(); // Aktualisiert die Anzeige für die Kriterien
         renderAbstufungenTags();

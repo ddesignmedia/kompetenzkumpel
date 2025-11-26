@@ -298,6 +298,23 @@ h1, h2, h3, h4, h5, h6 {
     font-size: 1.5rem;
 }
 
+.gewicht-indicator-main {
+    font-size: 0.7rem;
+    font-weight: bold;
+    color: var(--color-gray-600);
+    background-color: var(--color-gray-200);
+    padding: 2px 6px;
+    border-radius: 8px;
+    margin-left: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.gewicht-indicator-main:hover {
+    background-color: var(--color-gray-300);
+    color: var(--color-gray-800);
+}
+
 .combo-box .form-select, .combo-box .tag-input {
     padding: 0.75rem;
     font-size: 1rem;
