@@ -482,16 +482,27 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function erstelleRaster() {
         const fach = klassen[aktuelleKlasse]?.[aktuellesFach];
-        if (!fach || fach.kriterien.length === 0 || abstufungen.length === 0 || !aktuellerSchuelerName) {
+        const fachKriterien = fach ? fach.kriterien : kriterien; // Fallback auf globale Kriterien für die Vorschau
+
+        if (fachKriterien.length === 0 || abstufungen.length === 0) {
             rasterContainer.classList.add('hidden');
             rasterPlatzhalter.classList.remove('hidden');
             return;
         }
+
         rasterPlatzhalter.classList.add('hidden');
         rasterContainer.classList.remove('hidden');
-        rasterTitel.textContent = `Bewertungsraster für: ${aktuellerSchuelerName} (${aktuelleKlasse} - ${aktuellesFach})`;
-
         kompetenzRaster.innerHTML = '';
+
+        const isPreview = !aktuellerSchuelerName;
+
+        if (isPreview) {
+            rasterTitel.textContent = 'Raster-Vorschau (nicht interaktiv)';
+            auswertungContainer.classList.add('hidden');
+            auswertungPlatzhalter.classList.remove('hidden');
+        } else {
+            rasterTitel.textContent = `Bewertungsraster für: ${aktuellerSchuelerName} (${aktuelleKlasse} - ${aktuellesFach})`;
+        }
 
         const thead = document.createElement('thead');
         let headerRow = '<tr><th class="text-left">Kriterium</th>';
@@ -503,29 +514,34 @@ document.addEventListener('DOMContentLoaded', function () {
         kompetenzRaster.appendChild(thead);
 
         const tbody = document.createElement('tbody');
-        const aktuelleBewertungen = fach.bewertungen[aktuellerSchuelerName].bewertung;
-        fach.kriterien.forEach((kriterium, kIndex) => {
-            const gewicht = aktuelleBewertungen[kIndex] ? aktuelleBewertungen[kIndex].gewicht : 1;
+        const aktuelleBewertungen = !isPreview ? fach.bewertungen[aktuellerSchuelerName].bewertung : null;
+
+        fachKriterien.forEach((kriterium, kIndex) => {
+            const gewicht = aktuelleBewertungen && aktuelleBewertungen[kIndex] ? aktuelleBewertungen[kIndex].gewicht : 1;
             let row = `<tr>
-                        <td class="font-medium kriterium-zelle" data-kriterium-index="${kIndex}">
+                        <td class="font-medium kriterium-zelle ${isPreview ? 'preview' : ''}" data-kriterium-index="${kIndex}">
                             ${kriterium}
                             <span class="gewicht-indicator">x${gewicht}</span>
                         </td>`;
             abstufungen.forEach((_, aIndex) => {
-                row += `<td class="grid-cell" data-kriterium-index="${kIndex}" data-abstufung-index="${aIndex}"></td>`;
+                row += `<td class="grid-cell ${isPreview ? 'preview' : ''}" data-kriterium-index="${kIndex}" data-abstufung-index="${aIndex}"></td>`;
             });
             row += '</tr>';
             tbody.innerHTML += row;
         });
         kompetenzRaster.appendChild(tbody);
 
-        addGridCellListeners();
-        updateRasterAnsicht();
+        if (!isPreview) {
+            addGridCellListeners();
+            updateRasterAnsicht();
+        }
     }
 
     function addGridCellListeners() {
+        if (!aktuellerSchuelerName) return; // Nicht interaktiv im Vorschaumodus
+
         // Klick auf Bewertungszellen
-        kompetenzRaster.querySelectorAll('.grid-cell').forEach(cell => {
+        kompetenzRaster.querySelectorAll('.grid-cell:not(.preview)').forEach(cell => {
             cell.addEventListener('click', () => {
                 if (!aktuelleKlasse || !aktuellesFach || !aktuellerSchuelerName) return;
 
@@ -545,7 +561,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         // Klick auf Kriterium-Zelle zur Gewichtung
-        kompetenzRaster.querySelectorAll('.kriterium-zelle').forEach(zelle => {
+        kompetenzRaster.querySelectorAll('.kriterium-zelle:not(.preview)').forEach(zelle => {
             zelle.addEventListener('click', () => {
                 if (!aktuelleKlasse || !aktuellesFach || !aktuellerSchuelerName) return;
 
@@ -563,7 +579,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateRasterAnsicht() {
-        if (!aktuelleKlasse || !aktuellesFach || !aktuellerSchuelerName || !klassen[aktuelleKlasse][aktuellesFach].bewertungen[aktuellerSchuelerName]) return;
+        if (!aktuelleKlasse || !aktuellesFach || !aktuellerSchuelerName || !klassen[aktuelleKlasse][aktuellesFach].bewertungen[aktuellerSchuelerName]) {
+            return;
+        }
+
         const aktuelleBewertung = klassen[aktuelleKlasse][aktuellesFach].bewertungen[aktuellerSchuelerName].bewertung;
 
         kompetenzRaster.querySelectorAll('.grid-cell').forEach(cell => {
@@ -576,7 +595,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Kriterien-Zellen (Gewichtung) aktualisieren
         kompetenzRaster.querySelectorAll('.kriterium-zelle').forEach(zelle => {
              const kIndex = parseInt(zelle.dataset.kriteriumIndex);
-             const gewicht = aktuelleBewertung[kIndex].gewicht;
+             const gewicht = aktuelleBewertung[kIndex] ? aktuelleBewertung[kIndex].gewicht : 1;
              const indicator = zelle.querySelector('.gewicht-indicator');
              if(indicator) {
                 indicator.textContent = `x${gewicht}`;
