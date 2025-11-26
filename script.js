@@ -94,6 +94,25 @@ document.addEventListener('DOMContentLoaded', function () {
     function setupTagInput(container, input, dataArray) {
         let draggedIndex = -1;
 
+        // Synchronisiert die Bewertungs-Arrays aller Schüler, wenn sich die Kriterien ändern
+        function syncBewertungenOnCriteriaChange(action, index, newIndex = -1) {
+            if (container !== kriterienContainer || !aktuelleKlasse || !aktuellesFach || !klassen[aktuelleKlasse]?.[aktuellesFach]) {
+                return;
+            }
+
+            const fach = klassen[aktuelleKlasse][aktuellesFach];
+            Object.values(fach.bewertungen).forEach(schuelerBewertung => {
+                if (action === 'remove') {
+                    schuelerBewertung.bewertung.splice(index, 1);
+                } else if (action === 'add') {
+                    schuelerBewertung.bewertung.push({ wert: null, gewicht: 1 });
+                } else if (action === 'move') {
+                    const [movedBewertung] = schuelerBewertung.bewertung.splice(index, 1);
+                    schuelerBewertung.bewertung.splice(newIndex, 0, movedBewertung);
+                }
+            });
+        }
+
         function renderTags() {
             container.querySelectorAll('.tag').forEach(tag => tag.remove());
             dataArray.forEach((item, index) => {
@@ -103,11 +122,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 tag.draggable = true;
                 tag.dataset.index = index;
 
-                // Drag-and-Drop Event Listener
                 tag.addEventListener('dragstart', (e) => {
                     draggedIndex = index;
                     e.dataTransfer.effectAllowed = 'move';
-                    // Kleiner Timeout, damit der Browser das Element "greifen" kann
                     setTimeout(() => e.target.classList.add('dragging'), 0);
                 });
 
@@ -119,10 +136,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 removeBtn.innerHTML = '&times;';
                 removeBtn.onclick = () => {
                     dataArray.splice(index, 1);
+                    syncBewertungenOnCriteriaChange('remove', index);
                     renderTags();
-                    if (container === abstufungenContainer) {
-                        erstelleRaster();
-                    }
+                    erstelleRaster();
+                    updateAuswertung();
                 };
                 tag.appendChild(removeBtn);
                 container.insertBefore(tag, input);
@@ -146,24 +163,17 @@ document.addEventListener('DOMContentLoaded', function () {
             e.preventDefault();
             const target = e.target.closest('.tag');
             if (target && draggedIndex !== -1) {
-                const targetIndex = parseInt(target.dataset.index);
-
-                // Element verschieben
-                const [draggedItem] = dataArray.splice(draggedIndex, 1);
-
-                // Den neuen Index finden, da sich die Indizes verschoben haben könnten
                 const newTargetIndex = Array.from(container.querySelectorAll('.tag:not(.dragging)')).indexOf(target);
 
-                dataArray.splice(newTargetIndex, 0, draggedItem);
-
-                // UI aktualisieren
-                renderTags();
-
-                // Wenn es die Abstufungen sind, das Raster neu zeichnen
-                if (container === abstufungenContainer) {
-                    erstelleRaster();
-                    updateAuswertung();
+                if (newTargetIndex !== -1) {
+                    const [draggedItem] = dataArray.splice(draggedIndex, 1);
+                    dataArray.splice(newTargetIndex, 0, draggedItem);
+                    syncBewertungenOnCriteriaChange('move', draggedIndex, newTargetIndex);
                 }
+
+                renderTags();
+                erstelleRaster();
+                updateAuswertung();
             }
             draggedIndex = -1;
         });
@@ -185,11 +195,15 @@ document.addEventListener('DOMContentLoaded', function () {
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && input.value.trim() !== '') {
                 e.preventDefault();
-                if (!dataArray.includes(input.value.trim())) {
-                   dataArray.push(input.value.trim());
+                const newValue = input.value.trim();
+                if (!dataArray.includes(newValue)) {
+                   dataArray.push(newValue);
+                   syncBewertungenOnCriteriaChange('add');
                 }
                 input.value = '';
                 renderTags();
+                erstelleRaster();
+                updateAuswertung();
             }
         });
         renderTags();
@@ -961,21 +975,30 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Vorlagen-Logik ---
     saveVorlageBtn.addEventListener('click', () => {
-        const fachKriterien = klassen[aktuelleKlasse]?.[aktuellesFach]?.kriterien || kriterien;
-        if (fachKriterien.length === 0 || abstufungen.length === 0) {
-            showNotification('Hinweis', 'Es sind keine Kriterien oder Abstufungen zum Speichern vorhanden.');
+        const fach = klassen[aktuelleKlasse]?.[aktuellesFach];
+        if (!fach || fach.kriterien.length === 0 || abstufungen.length === 0) {
+            showNotification('Hinweis', 'Bitte wählen Sie ein Fach mit Kriterien und Abstufungen aus, um eine Vorlage zu speichern.');
             return;
         }
-        const vorlage = { kriterien: fachKriterien, abstufungen };
+
+        const aktuelleBewertungen = aktuellerSchuelerName ? fach.bewertungen[aktuellerSchuelerName]?.bewertung : null;
+
+        const kriterienMitGewichtung = fach.kriterien.map((kriteriumText, index) => {
+            // Nimm die Gewichtung vom aktuellen Schüler, oder 1 als Standard
+            const gewicht = aktuelleBewertungen && aktuelleBewertungen[index] ? aktuelleBewertungen[index].gewicht : 1;
+            return { text: kriteriumText, gewicht: gewicht };
+        });
+
+        const vorlage = { kriterien: kriterienMitGewichtung, abstufungen };
         const dataStr = JSON.stringify(vorlage, null, 2);
-        const dataBlob = new Blob([dataStr], {type: 'application/json'});
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
         const url = URL.createObjectURL(dataBlob);
         const link = document.createElement('a');
         link.download = 'vorlage.json';
         link.href = url;
-        document.body.appendChild(link); // Append to body to ensure visibility
+        document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link); // Clean up
+        document.body.removeChild(link);
         URL.revokeObjectURL(url);
     });
 
@@ -1002,25 +1025,40 @@ document.addEventListener('DOMContentLoaded', function () {
 
     loadVorlageBtn.addEventListener('click', () => {
         const ausgewaehlterName = vorlagenSelect.value;
+        const fach = klassen[aktuelleKlasse]?.[aktuellesFach];
+
         if (!ausgewaehlterName || !geladeneVorlagen[ausgewaehlterName]) {
             showNotification('Hinweis', 'Bitte wählen Sie eine gültige Vorlage aus.');
             return;
         }
+        if (!fach) {
+            showNotification('Hinweis', 'Bitte wählen Sie zuerst eine Klasse und ein Fach aus, um eine Vorlage zu laden.');
+            return;
+        }
 
         const vorlage = geladeneVorlagen[ausgewaehlterName];
-        const zielKriterien = klassen[aktuelleKlasse]?.[aktuellesFach]?.kriterien || kriterien;
+        const hatGewichtung = typeof vorlage.kriterien[0] === 'object';
 
-        zielKriterien.length = 0;
+        const neueKriterien = hatGewichtung ? vorlage.kriterien.map(k => k.text) : vorlage.kriterien;
+        const neueBewertungen = hatGewichtung
+            ? vorlage.kriterien.map(k => ({ wert: null, gewicht: k.gewicht || 1 }))
+            : neueKriterien.map(() => ({ wert: null, gewicht: 1 }));
+
+        fach.kriterien.length = 0;
+        Array.prototype.push.apply(fach.kriterien, neueKriterien);
+
         abstufungen.length = 0;
-        Array.prototype.push.apply(zielKriterien, vorlage.kriterien);
         Array.prototype.push.apply(abstufungen, vorlage.abstufungen);
 
-        updateKriterienInput(); // Aktualisiert die Anzeige für die Kriterien
-        renderAbstufungenTags();
+        // Aktualisiere die Bewertungen für alle Schüler im aktuellen Fach
+        Object.values(fach.bewertungen).forEach(schuelerBewertung => {
+            schuelerBewertung.bewertung = JSON.parse(JSON.stringify(neueBewertungen)); // Tiefe Kopie
+        });
 
-        if (aktuellerSchuelerName) {
-            rasterErstellenBtn.click(); // Um das Raster und die Bewertungen zu aktualisieren
-        }
+        updateKriterienInput();
+        renderAbstufungenTags();
+        erstelleRaster();
+        updateAuswertung();
 
         showNotification('Erfolg', `Die Vorlage "${ausgewaehlterName}" wurde erfolgreich geladen.`);
     });
