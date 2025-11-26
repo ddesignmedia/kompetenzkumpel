@@ -138,6 +138,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     dataArray.splice(index, 1);
                     syncBewertungenOnCriteriaChange('remove', index);
                     renderTags();
+                    erstelleRaster();
+                    updateAuswertung();
                 };
                 tag.appendChild(removeBtn);
                 container.insertBefore(tag, input);
@@ -170,6 +172,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 renderTags();
+                erstelleRaster();
+                updateAuswertung();
             }
             draggedIndex = -1;
         });
@@ -198,6 +202,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 input.value = '';
                 renderTags();
+                erstelleRaster();
+                updateAuswertung();
             }
         });
         renderTags();
