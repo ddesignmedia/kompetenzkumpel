@@ -192,7 +192,14 @@ document.addEventListener('DOMContentLoaded', function () {
             }, { offset: Number.NEGATIVE_INFINITY }).element;
         }
 
-        input.addEventListener('keydown', (e) => {
+        // --- Event Listener Management ---
+        // To prevent multiple listeners from being added to the same input (e.g., kriterienInput),
+        // we store the handler on the element itself, removing the old one before adding a new one.
+        if (input._handleTagInputKeyDown) {
+            input.removeEventListener('keydown', input._handleTagInputKeyDown);
+        }
+
+        input._handleTagInputKeyDown = (e) => {
             if (e.key === 'Enter' && input.value.trim() !== '') {
                 e.preventDefault();
                 const value = input.value.trim();
@@ -203,10 +210,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     dataArray.push(newItem);
                     // The sync logic is now handled by the "Raster erstellen" button
                     input.value = '';
-                    renderTags();
+                    renderTags(); // renderTags is in the closure, so it has the correct context
                 }
             }
-        });
+        };
+
+        input.addEventListener('keydown', input._handleTagInputKeyDown);
 
         renderTags();
         return renderTags;
