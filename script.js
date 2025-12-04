@@ -264,6 +264,19 @@ document.addEventListener('DOMContentLoaded', function () {
              } else {
                  kriterienArray = kriterienSelbstreflexionGlobal;
              }
+        if (currentEditMode === 'teacher') {
+            kriterienArray = klassen[aktuelleKlasse]?.[aktuellesFach]?.kriterien || kriterien;
+        } else {
+             const fach = klassen[aktuelleKlasse]?.[aktuellesFach];
+             // If no subject is selected, we can use a temporary array or empty one,
+             // but 'kriterienSelbstreflexion' is only defined on the subject.
+             // If no subject, we might want to just show nothing or a warning?
+             // Or maybe we should have a global fallback for self-reflection too?
+             // Let's assume we need a subject selected for self-reflection criteria,
+             // or we initialize a global fallback if we want to support it without subject.
+             // However, the prompt implies "insert criteria... for self-reflection".
+             // If we follow existing pattern:
+             kriterienArray = fach ? (fach.kriterienSelbstreflexion || []) : [];
         }
 
         renderKriterienTags = setupTagInput(kriterienContainer, kriterienInput, kriterienArray, 'text');
