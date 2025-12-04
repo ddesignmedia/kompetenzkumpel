@@ -62,6 +62,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const loadStateInput = document.getElementById('load-state-input');
     const exportPdfBtn = document.getElementById('export-pdf-btn');
     const exportGradesBtn = document.getElementById('export-grades-btn');
+    const exportReflectionBtn = document.getElementById('export-reflection-btn');
     const exportKlasseSelect = document.getElementById('export-klasse-select');
     const exportFachSelect = document.getElementById('export-fach-select');
     const saveVorlageBtn = document.getElementById('save-vorlage-btn');
@@ -116,6 +117,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (property === 'text') { // Nur für Kriterien
                     tag.appendChild(document.createTextNode(' ')); // Add a space for styling
+
+                    const reflectionBtn = document.createElement('span');
+                    reflectionBtn.className = item.markedForReflection ? 'reflection-indicator active' : 'reflection-indicator';
+                    reflectionBtn.textContent = item.markedForReflection ? '★' : '☆';
+                    reflectionBtn.title = 'Klick, um für den Selbstreflexionsbogen zu markieren.';
+                    reflectionBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        item.markedForReflection = !item.markedForReflection;
+                        renderTags();
+                    };
+                    tag.appendChild(reflectionBtn);
+
                     const gewichtBtn = document.createElement('span');
                     gewichtBtn.className = 'gewicht-indicator-main';
                     gewichtBtn.textContent = `x${item.gewicht}`;
@@ -1028,6 +1041,79 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     exportGradesBtn.addEventListener('click', exportGradesList);
+
+    async function exportSelfReflectionPdf() {
+        const klasseName = exportKlasseSelect.value;
+        const fachName = exportFachSelect.value;
+
+        if (!klasseName || !fachName || !klassen[klasseName] || !klassen[klasseName][fachName]) {
+            showNotification('Hinweis', 'Bitte wählen Sie eine gültige Klasse und ein Fach für den Export aus.');
+            return;
+        }
+
+        const fach = klassen[klasseName][fachName];
+        const fachKriterien = fach.kriterien;
+        const markedKriterien = fachKriterien.filter(k => k.markedForReflection);
+
+        if (markedKriterien.length === 0) {
+            showNotification('Hinweis', 'Es wurden keine Kriterien für den Selbstreflexionsbogen markiert. Bitte markieren Sie Kriterien mit dem Stern-Symbol in der Kriterienliste.');
+            return;
+        }
+
+        exportReflectionBtn.disabled = true;
+        exportReflectionBtn.textContent = 'Exportiere...';
+
+        const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+        const margin = 15;
+        let y = margin;
+
+        doc.setFontSize(18);
+        doc.text(`Selbstreflexionsbogen`, margin, y);
+        y += 10;
+        doc.setFontSize(12);
+        doc.text(`Klasse: ${klasseName} - Fach: ${fachName}`, margin, y);
+        y += 10;
+        doc.text(`Name: ___________________________________`, margin, y);
+        y += 15;
+
+        const tableData = markedKriterien.map(k => [k.text, '', '', '', '', '']);
+
+        doc.autoTable({
+            startY: y,
+            head: [['Kriterium', 'sehr gut', 'gut', 'geht so', 'eher nicht so', 'geht noch gar nicht']],
+            body: tableData,
+            theme: 'grid',
+            headStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold', halign: 'center' },
+            columnStyles: {
+                0: { cellWidth: 60 }, // Kriterium column width
+                1: { cellWidth: 20, halign: 'center' },
+                2: { cellWidth: 20, halign: 'center' },
+                3: { cellWidth: 20, halign: 'center' },
+                4: { cellWidth: 20, halign: 'center' },
+                5: { cellWidth: 30, halign: 'center' } // Slightly wider for longer text
+            },
+            styles: { valign: 'middle', minCellHeight: 10 },
+            didParseCell: function(data) {
+                // Adjust header for the last column if it wraps
+                if (data.section === 'head' && data.column.index === 5) {
+                    // data.cell.styles.fontSize = 8; // Maybe reduce font size if needed
+                }
+            },
+            didDrawCell: function(data) {
+                if (data.section === 'body' && data.column.index > 0) {
+                   // Draw a circle or box for checking
+                   // Using simple empty cells as requested "ankreuzen"
+                }
+            }
+        });
+
+        doc.save(`Selbstreflexion_${klasseName}_${fachName}_${new Date().toISOString().slice(0,10)}.pdf`);
+
+        exportReflectionBtn.disabled = false;
+        exportReflectionBtn.textContent = 'Selbstreflexionsbogen';
+    }
+
+    exportReflectionBtn.addEventListener('click', exportSelfReflectionPdf);
 
     // Initial render on load
     renderAllFromState();
