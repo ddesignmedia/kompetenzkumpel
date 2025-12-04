@@ -25,6 +25,20 @@
                 <div class="card">
                     <h2 class="text-xl font-bold card-header">1. Raster definieren</h2>
                     <div class="card-content">
+                        <div style="margin-bottom: 1rem;">
+                            <label class="form-label text-sm">Bearbeitungsmodus</label>
+                            <div class="flex items-center space-x-4 mt-1">
+                                <label class="flex items-center space-x-2 cursor-pointer">
+                                    <input type="radio" name="edit-mode" value="teacher" checked class="form-radio">
+                                    <span class="text-sm">Lehrer-Bewertung</span>
+                                </label>
+                                <label class="flex items-center space-x-2 cursor-pointer">
+                                    <input type="radio" name="edit-mode" value="student" class="form-radio">
+                                    <span class="text-sm">Selbstreflexion</span>
+                                </label>
+                            </div>
+                        </div>
+
                         <div>
                             <label for="kriterien-input" class="form-label text-sm">Kriterien</label>
                             <p class="text-xs form-description">Geben Sie ein Kriterium ein und drücken Sie die Eingabetaste.</p>
@@ -125,6 +139,9 @@
                                 </button>
                                 <button id="export-grades-btn" class="btn btn-dark-gray" style="margin-top: 0.75rem;">
                                     Notenliste
+                                </button>
+                                <button id="export-reflexion-btn" class="btn btn-dark-gray" style="margin-top: 0.75rem;">
+                                    Selbstreflexionsbogen (PDF)
                                 </button>
                             </div>
                         </div>
