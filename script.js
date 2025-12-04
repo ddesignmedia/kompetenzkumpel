@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', function () {
         { text: "Arbeitsaufträge erfüllt", gewicht: 1 }
     ];
     let kriterienSelbstreflexionGlobal = kriterien.map(k => ({...k})); // Fallback/Default for self-reflection
+    let kriterienSelbstreflexionGlobal = []; // Fallback/Default for self-reflection
     let abstufungen = [
     "Herausragend",
     "Stark ausgeprägt",
@@ -261,6 +262,7 @@ document.addEventListener('DOMContentLoaded', function () {
                      // Default: Copy from Teacher Criteria
                      const sourceKriterien = fach.kriterien || kriterien;
                      fach.kriterienSelbstreflexion = sourceKriterien.map(k => ({...k}));
+                     fach.kriterienSelbstreflexion = [];
                  }
                  kriterienArray = fach.kriterienSelbstreflexion;
              } else {
@@ -1303,6 +1305,28 @@ document.addEventListener('DOMContentLoaded', function () {
              const clonedKriterien = importierteKriterien.map(k => (typeof k === 'string' ? { text: k, gewicht: 1 } : { ...k }));
              zielKriterienReflexion.length = 0;
              Array.prototype.push.apply(zielKriterienReflexion, clonedKriterien);
+        }
+
+
+        // Handle Teacher Gradations
+        if (vorlage.abstufungen) {
+            abstufungen.length = 0;
+            Array.prototype.push.apply(abstufungen, vorlage.abstufungen);
+        }
+
+        // Handle Self-Reflection Criteria
+        if (vorlage.kriterienSelbstreflexion) {
+            let zielKriterienReflexion = fach?.kriterienSelbstreflexion;
+            if (!zielKriterienReflexion) {
+                 if (fach) {
+                     fach.kriterienSelbstreflexion = [];
+                     zielKriterienReflexion = fach.kriterienSelbstreflexion;
+                 } else {
+                     zielKriterienReflexion = kriterienSelbstreflexionGlobal;
+                 }
+            }
+            zielKriterienReflexion.length = 0;
+            Array.prototype.push.apply(zielKriterienReflexion, vorlage.kriterienSelbstreflexion);
         }
 
         // Handle Self-Reflection Gradations
