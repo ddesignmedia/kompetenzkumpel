@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
         { text: "Tabletnutzung sinnvoll", gewicht: 1 },
         { text: "Arbeitsaufträge erfüllt", gewicht: 1 }
     ];
+    let kriterienSelbstreflexionGlobal = kriterien.map(k => ({...k})); // Fallback/Default for self-reflection
     let kriterienSelbstreflexionGlobal = []; // Fallback/Default for self-reflection
     let abstufungen = [
     "Herausragend",
@@ -258,6 +259,9 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
              if (fach) {
                  if (!fach.kriterienSelbstreflexion) {
+                     // Default: Copy from Teacher Criteria
+                     const sourceKriterien = fach.kriterien || kriterien;
+                     fach.kriterienSelbstreflexion = sourceKriterien.map(k => ({...k}));
                      fach.kriterienSelbstreflexion = [];
                  }
                  kriterienArray = fach.kriterienSelbstreflexion;
@@ -484,10 +488,14 @@ document.addEventListener('DOMContentLoaded', function () {
     neuesFachBtn.addEventListener('click', () => {
         const neuesFach = neuesFachInput.value.trim();
         if (neuesFach && aktuelleKlasse && !klassen[aktuelleKlasse][neuesFach]) {
+            const initialKriterien = kriterien.map(k => ({...k}));
             klassen[aktuelleKlasse][neuesFach] = {
                 schueler: [],
                 bewertungen: {},
                 // Kriterien tief kopieren, um Unabhängigkeit zu gewährleisten
+                kriterien: initialKriterien,
+                // Removed eager initialization for kriterienSelbstreflexion to allow lazy copy from current kriterien
+                // kriterienSelbstreflexion: []
                 kriterien: kriterien.map(k => ({...k})),
                 kriterienSelbstreflexion: []
             };
@@ -881,6 +889,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
 
                         if (!fach.kriterienSelbstreflexion) {
+                            // Default: Copy from Teacher Criteria
+                            const sourceKriterien = fach.kriterien || kriterien;
+                            fach.kriterienSelbstreflexion = sourceKriterien.map(k => ({...k}));
                             fach.kriterienSelbstreflexion = [];
                         }
 
@@ -1258,6 +1269,44 @@ document.addEventListener('DOMContentLoaded', function () {
             zielKriterien.length = 0;
             Array.prototype.push.apply(zielKriterien, importierteKriterien);
         }
+
+        // Handle Teacher Gradations
+        if (vorlage.abstufungen) {
+            abstufungen.length = 0;
+            Array.prototype.push.apply(abstufungen, vorlage.abstufungen);
+        }
+
+        // Handle Self-Reflection Criteria
+        if (vorlage.kriterienSelbstreflexion) {
+            let zielKriterienReflexion = fach?.kriterienSelbstreflexion;
+            if (!zielKriterienReflexion) {
+                 if (fach) {
+                     fach.kriterienSelbstreflexion = [];
+                     zielKriterienReflexion = fach.kriterienSelbstreflexion;
+                 } else {
+                     zielKriterienReflexion = kriterienSelbstreflexionGlobal;
+                 }
+            }
+            zielKriterienReflexion.length = 0;
+            Array.prototype.push.apply(zielKriterienReflexion, vorlage.kriterienSelbstreflexion);
+        } else if (importierteKriterien) {
+            // If template has NO self-reflection criteria, but HAS teacher criteria,
+            // we copy the teacher criteria to self-reflection (as a default reset).
+             let zielKriterienReflexion = fach?.kriterienSelbstreflexion;
+             if (!zielKriterienReflexion) {
+                 if (fach) {
+                     fach.kriterienSelbstreflexion = [];
+                     zielKriterienReflexion = fach.kriterienSelbstreflexion;
+                 } else {
+                     zielKriterienReflexion = kriterienSelbstreflexionGlobal;
+                 }
+             }
+             // Clone the imported teacher criteria
+             const clonedKriterien = importierteKriterien.map(k => (typeof k === 'string' ? { text: k, gewicht: 1 } : { ...k }));
+             zielKriterienReflexion.length = 0;
+             Array.prototype.push.apply(zielKriterienReflexion, clonedKriterien);
+        }
+
 
         // Handle Teacher Gradations
         if (vorlage.abstufungen) {
