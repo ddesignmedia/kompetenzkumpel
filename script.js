@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
         { text: "Tabletnutzung sinnvoll", gewicht: 1 },
         { text: "Arbeitsaufträge erfüllt", gewicht: 1 }
     ];
+    let kriterienSelbstreflexionGlobal = []; // Fallback/Default for self-reflection
     let abstufungen = [
     "Herausragend",
     "Stark ausgeprägt",
@@ -250,6 +251,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function updateKriterienInput() {
         let kriterienArray;
+        const fach = klassen[aktuelleKlasse]?.[aktuellesFach];
+
+        if (currentEditMode === 'teacher') {
+            kriterienArray = fach?.kriterien || kriterien;
+        } else {
+             if (fach) {
+                 if (!fach.kriterienSelbstreflexion) {
+                     fach.kriterienSelbstreflexion = [];
+                 }
+                 kriterienArray = fach.kriterienSelbstreflexion;
+             } else {
+                 kriterienArray = kriterienSelbstreflexionGlobal;
+             }
         if (currentEditMode === 'teacher') {
             kriterienArray = klassen[aktuelleKlasse]?.[aktuellesFach]?.kriterien || kriterien;
         } else {
@@ -1175,12 +1189,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Vorlagen-Logik ---
     saveVorlageBtn.addEventListener('click', () => {
-        const fachKriterien = klassen[aktuelleKlasse]?.[aktuellesFach]?.kriterien || kriterien;
+        const fach = klassen[aktuelleKlasse]?.[aktuellesFach];
+        const fachKriterien = fach?.kriterien || kriterien;
+        const fachKriterienReflexion = fach?.kriterienSelbstreflexion || kriterienSelbstreflexionGlobal;
+
         if (fachKriterien.length === 0 || abstufungen.length === 0) {
             showNotification('Hinweis', 'Es sind keine Kriterien oder Abstufungen zum Speichern vorhanden.');
             return;
         }
-        const vorlage = { kriterien: fachKriterien, abstufungen };
+        const vorlage = {
+            kriterien: fachKriterien,
+            abstufungen,
+            kriterienSelbstreflexion: fachKriterienReflexion,
+            abstufungenSelbstreflexion
+        };
         const dataStr = JSON.stringify(vorlage, null, 2);
         const dataBlob = new Blob([dataStr], {type: 'application/json'});
         const url = URL.createObjectURL(dataBlob);
@@ -1222,20 +1244,47 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const vorlage = geladeneVorlagen[ausgewaehlterName];
-        const zielKriterien = klassen[aktuelleKlasse]?.[aktuellesFach]?.kriterien || kriterien;
+        const fach = klassen[aktuelleKlasse]?.[aktuellesFach];
+        const zielKriterien = fach?.kriterien || kriterien;
 
+        // Handle Teacher Criteria (Standard)
         let importierteKriterien = vorlage.kriterien;
         // Backwards compatibility for old templates with string arrays
         if (importierteKriterien && importierteKriterien.length > 0 && (typeof importierteKriterien[0] === 'string' || !importierteKriterien[0].hasOwnProperty('gewicht'))) {
              importierteKriterien = importierteKriterien.map(k => (typeof k === 'string' ? { text: k, gewicht: 1 } : { ...k, gewicht: k.gewicht || 1 }));
         }
 
+        if (importierteKriterien) {
+            zielKriterien.length = 0;
+            Array.prototype.push.apply(zielKriterien, importierteKriterien);
+        }
 
-        zielKriterien.length = 0;
-        abstufungen.length = 0;
-        Array.prototype.push.apply(zielKriterien, importierteKriterien || []);
-        Array.prototype.push.apply(abstufungen, vorlage.abstufungen || []);
+        // Handle Teacher Gradations
+        if (vorlage.abstufungen) {
+            abstufungen.length = 0;
+            Array.prototype.push.apply(abstufungen, vorlage.abstufungen);
+        }
 
+        // Handle Self-Reflection Criteria
+        if (vorlage.kriterienSelbstreflexion) {
+            let zielKriterienReflexion = fach?.kriterienSelbstreflexion;
+            if (!zielKriterienReflexion) {
+                 if (fach) {
+                     fach.kriterienSelbstreflexion = [];
+                     zielKriterienReflexion = fach.kriterienSelbstreflexion;
+                 } else {
+                     zielKriterienReflexion = kriterienSelbstreflexionGlobal;
+                 }
+            }
+            zielKriterienReflexion.length = 0;
+            Array.prototype.push.apply(zielKriterienReflexion, vorlage.kriterienSelbstreflexion);
+        }
+
+        // Handle Self-Reflection Gradations
+        if (vorlage.abstufungenSelbstreflexion) {
+            abstufungenSelbstreflexion.length = 0;
+            Array.prototype.push.apply(abstufungenSelbstreflexion, vorlage.abstufungenSelbstreflexion);
+        }
 
         updateKriterienInput(); // Aktualisiert die Anzeige für die Kriterien
         updateAbstufungenInput();
