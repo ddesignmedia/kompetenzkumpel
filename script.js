@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
         { text: "Tabletnutzung sinnvoll", gewicht: 1 },
         { text: "Arbeitsaufträge erfüllt", gewicht: 1 }
     ];
+    let kriterienSelbstreflexionGlobal = kriterien.map(k => ({...k})); // Fallback/Default for self-reflection
     let abstufungen = [
     "Herausragend",
     "Stark ausgeprägt",
@@ -18,12 +19,20 @@ document.addEventListener('DOMContentLoaded', function () {
     "Ansatzweise erkennbar",
     "Noch nicht erkennbar"
   ];
+    let abstufungenSelbstreflexion = [
+        "Stimmt voll und ganz",
+        "Stimmt überwiegend",
+        "Stimmt teilweise",
+        "Stimmt eher nicht",
+        "Stimmt gar nicht"
+    ];
     let schueler = [];
     let klassen = {}; // { "6a": { "Mathe": { schueler: ["Anna", "Ben"], bewertungen: { "Anna": [...] } } } }
     let aktuelleKlasse = null;
     let aktuellesFach = null;
     let aktuellerSchuelerName = null;
     let geladeneVorlagen = {};
+    let currentEditMode = 'teacher'; // 'teacher' or 'student'
 
     // DOM-Elemente
     const klasseSelect = document.getElementById('klasse-select');
@@ -67,6 +76,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const saveVorlageBtn = document.getElementById('save-vorlage-btn');
     const loadVorlageBtn = document.getElementById('load-vorlage-btn');
     const vorlagenSelect = document.getElementById('vorlagen-select');
+    const exportReflexionBtn = document.getElementById('export-reflexion-btn');
+
+    // Mode switching elements
+    const modeRadios = document.querySelectorAll('input[name="edit-mode"]');
 
     // Modal elements
     const modal = document.getElementById('notification-modal');
@@ -116,17 +129,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (property === 'text') { // Nur für Kriterien
                     tag.appendChild(document.createTextNode(' ')); // Add a space for styling
-                    const gewichtBtn = document.createElement('span');
-                    gewichtBtn.className = 'gewicht-indicator-main';
-                    gewichtBtn.textContent = `x${item.gewicht}`;
-                    gewichtBtn.title = 'Klick, um die Standard-Gewichtung für dieses Kriterium zu ändern.';
-                    gewichtBtn.onclick = (e) => {
-                        e.stopPropagation(); // Verhindert, dass Drag-Events ausgelöst werden
-                        // Zyklus: 1 -> 2 -> 3 -> 0 -> 1
-                        item.gewicht = (item.gewicht + 1) % 4;
-                        renderTags();
-                    };
-                    tag.appendChild(gewichtBtn);
+                    if (currentEditMode === 'teacher') {
+                        const gewichtBtn = document.createElement('span');
+                        gewichtBtn.className = 'gewicht-indicator-main';
+                        gewichtBtn.textContent = `x${item.gewicht}`;
+                        gewichtBtn.title = 'Klick, um die Standard-Gewichtung für dieses Kriterium zu ändern.';
+                        gewichtBtn.onclick = (e) => {
+                            e.stopPropagation(); // Verhindert, dass Drag-Events ausgelöst werden
+                            // Zyklus: 1 -> 2 -> 3 -> 0 -> 1
+                            item.gewicht = (item.gewicht + 1) % 4;
+                            renderTags();
+                        };
+                        tag.appendChild(gewichtBtn);
+                    }
                 }
 
                 const removeBtn = document.createElement('button');
@@ -223,12 +238,47 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
     let renderKriterienTags = () => {}; // Initialisiere als leere Funktion
-    const renderAbstufungenTags = setupTagInput(abstufungenContainer, abstufungenInput, abstufungen);
+    let renderAbstufungenTags = () => {};
+
+    function updateAbstufungenInput() {
+        const abstufungenArray = currentEditMode === 'teacher' ? abstufungen : abstufungenSelbstreflexion;
+        // Re-setup the tag input with the correct array
+        renderAbstufungenTags = setupTagInput(abstufungenContainer, abstufungenInput, abstufungenArray);
+    }
+    // Initial setup
+    updateAbstufungenInput();
+
 
     function updateKriterienInput() {
-        const kriterienArray = klassen[aktuelleKlasse]?.[aktuellesFach]?.kriterien || kriterien;
+        let kriterienArray;
+        const fach = klassen[aktuelleKlasse]?.[aktuellesFach];
+
+        if (currentEditMode === 'teacher') {
+            kriterienArray = fach?.kriterien || kriterien;
+        } else {
+             if (fach) {
+                 if (!fach.kriterienSelbstreflexion) {
+                     // Default: Copy from Teacher Criteria
+                     const sourceKriterien = fach.kriterien || kriterien;
+                     fach.kriterienSelbstreflexion = sourceKriterien.map(k => ({...k}));
+                 }
+                 kriterienArray = fach.kriterienSelbstreflexion;
+             } else {
+                 kriterienArray = kriterienSelbstreflexionGlobal;
+             }
+        }
+
         renderKriterienTags = setupTagInput(kriterienContainer, kriterienInput, kriterienArray, 'text');
     }
+
+    // --- Mode Switching Logic ---
+    modeRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            currentEditMode = e.target.value;
+            updateKriterienInput();
+            updateAbstufungenInput();
+        });
+    });
 
     // --- Schüler-Logik ---
     schuelerAnlegenBtn.addEventListener('click', () => {
@@ -423,11 +473,14 @@ document.addEventListener('DOMContentLoaded', function () {
     neuesFachBtn.addEventListener('click', () => {
         const neuesFach = neuesFachInput.value.trim();
         if (neuesFach && aktuelleKlasse && !klassen[aktuelleKlasse][neuesFach]) {
+            const initialKriterien = kriterien.map(k => ({...k}));
             klassen[aktuelleKlasse][neuesFach] = {
                 schueler: [],
                 bewertungen: {},
                 // Kriterien tief kopieren, um Unabhängigkeit zu gewährleisten
-                kriterien: kriterien.map(k => ({...k}))
+                kriterien: initialKriterien,
+                // Removed eager initialization for kriterienSelbstreflexion to allow lazy copy from current kriterien
+                // kriterienSelbstreflexion: []
             };
             aktuellesFach = neuesFach;
             neuesFachInput.value = '';
@@ -726,7 +779,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- Save & Load Logic ---
     function renderAllFromState() {
         updateKriterienInput();
-        renderAbstufungenTags();
+        updateAbstufungenInput();
         updateKlasseSelect();
         updateFachSelect();
 
@@ -749,7 +802,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         // Das globale `kriterien` wird nicht mehr benötigt, da es pro Fach gespeichert ist.
-        const state = { abstufungen, klassen };
+        const state = { abstufungen, abstufungenSelbstreflexion, klassen };
         const dataStr = JSON.stringify(state, null, 2);
         const dataBlob = new Blob([dataStr], { type: 'application/json' });
         const url = URL.createObjectURL(dataBlob);
@@ -785,6 +838,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 abstufungen.length = 0;
                 Array.prototype.push.apply(abstufungen, data.abstufungen);
 
+                if (data.abstufungenSelbstreflexion) {
+                    abstufungenSelbstreflexion.length = 0;
+                    Array.prototype.push.apply(abstufungenSelbstreflexion, data.abstufungenSelbstreflexion);
+                }
+
                 // `klassen` Objekt übernehmen
                 klassen = data.klassen;
 
@@ -811,6 +869,12 @@ document.addEventListener('DOMContentLoaded', function () {
                             fach.kriterien = migrateKriterien(fach.kriterien);
                         } else if (data.kriterien) {
                             fach.kriterien = migrateKriterien(data.kriterien);
+                        }
+
+                        if (!fach.kriterienSelbstreflexion) {
+                            // Default: Copy from Teacher Criteria
+                            const sourceKriterien = fach.kriterien || kriterien;
+                            fach.kriterienSelbstreflexion = sourceKriterien.map(k => ({...k}));
                         }
 
                         // Then, ensure `kriterienTexte` exists for each student evaluation
@@ -1029,17 +1093,109 @@ document.addEventListener('DOMContentLoaded', function () {
 
     exportGradesBtn.addEventListener('click', exportGradesList);
 
+    async function exportSelbstreflexionPDF() {
+        const klasseName = exportKlasseSelect.value;
+        const fachName = exportFachSelect.value;
+
+        if (!klasseName || !fachName || !klassen[klasseName] || !klassen[klasseName][fachName]) {
+            showNotification('Hinweis', 'Bitte wählen Sie eine gültige Klasse und ein Fach für den Export aus.');
+            return;
+        }
+
+        const fach = klassen[klasseName][fachName];
+        const kriterienReflexion = fach.kriterienSelbstreflexion;
+
+        if (!kriterienReflexion || kriterienReflexion.length === 0) {
+             showNotification('Hinweis', 'Es sind keine Selbstreflexions-Kriterien für dieses Fach definiert.');
+             return;
+        }
+
+        exportReflexionBtn.disabled = true;
+        exportReflexionBtn.textContent = 'Exportiere...';
+
+        const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const margin = 15;
+        let y = margin;
+
+        doc.setFontSize(16);
+        doc.text(`Selbstreflexion: ${fachName}`, margin, y);
+        doc.setFontSize(12);
+        doc.text(`Klasse: ${klasseName}`, pageWidth - margin, y, { align: 'right' });
+        y += 10;
+        doc.text("Name: ___________________________________", margin, y);
+        y += 15;
+
+        // Table Data
+        const headRow = ['Kriterium', ...abstufungenSelbstreflexion];
+        const bodyData = kriterienReflexion.map(k => {
+             // Create an array with the criteria text followed by empty strings for the cells
+             return [k.text, ...new Array(abstufungenSelbstreflexion.length).fill('')];
+        });
+
+        doc.autoTable({
+            startY: y,
+            head: [headRow],
+            body: bodyData,
+            theme: 'grid',
+            headStyles: {
+                fillColor: [255, 255, 255],
+                textColor: 0,
+                fontStyle: 'bold',
+                lineWidth: 0.1,
+                lineColor: [0, 0, 0],
+                halign: 'center',
+                valign: 'middle'
+            },
+            bodyStyles: {
+                lineWidth: 0.1,
+                lineColor: [0, 0, 0],
+                valign: 'middle',
+                minCellHeight: 15
+            },
+            columnStyles: {
+                0: { cellWidth: 60, halign: 'left' } // Criteria column
+                // Other columns will auto-adjust
+            },
+            didDrawCell: function(data) {
+                // Draw a circle in the center of the cell for checkmark
+                if (data.section === 'body' && data.column.index > 0) {
+                     const cell = data.cell;
+                     const x = cell.x + cell.width / 2;
+                     const y = cell.y + cell.height / 2;
+                     doc.setDrawColor(0);
+                     doc.circle(x, y, 3, 'S'); // 'S' for stroke
+                }
+            }
+        });
+
+        doc.save(`Selbstreflexion_${klasseName}_${fachName}.pdf`);
+
+        exportReflexionBtn.disabled = false;
+        exportReflexionBtn.textContent = 'Selbstreflexionsbogen (PDF)';
+    }
+
+    exportReflexionBtn.addEventListener('click', exportSelbstreflexionPDF);
+
     // Initial render on load
     renderAllFromState();
 
     // --- Vorlagen-Logik ---
     saveVorlageBtn.addEventListener('click', () => {
-        const fachKriterien = klassen[aktuelleKlasse]?.[aktuellesFach]?.kriterien || kriterien;
+        const fach = klassen[aktuelleKlasse]?.[aktuellesFach];
+        const fachKriterien = fach?.kriterien || kriterien;
+        const fachKriterienReflexion = fach?.kriterienSelbstreflexion || kriterienSelbstreflexionGlobal;
+
         if (fachKriterien.length === 0 || abstufungen.length === 0) {
             showNotification('Hinweis', 'Es sind keine Kriterien oder Abstufungen zum Speichern vorhanden.');
             return;
         }
-        const vorlage = { kriterien: fachKriterien, abstufungen };
+        const vorlage = {
+            kriterien: fachKriterien,
+            abstufungen,
+            kriterienSelbstreflexion: fachKriterienReflexion,
+            abstufungenSelbstreflexion
+        };
         const dataStr = JSON.stringify(vorlage, null, 2);
         const dataBlob = new Blob([dataStr], {type: 'application/json'});
         const url = URL.createObjectURL(dataBlob);
@@ -1081,23 +1237,66 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const vorlage = geladeneVorlagen[ausgewaehlterName];
-        const zielKriterien = klassen[aktuelleKlasse]?.[aktuellesFach]?.kriterien || kriterien;
+        const fach = klassen[aktuelleKlasse]?.[aktuellesFach];
+        const zielKriterien = fach?.kriterien || kriterien;
 
+        // Handle Teacher Criteria (Standard)
         let importierteKriterien = vorlage.kriterien;
         // Backwards compatibility for old templates with string arrays
         if (importierteKriterien && importierteKriterien.length > 0 && (typeof importierteKriterien[0] === 'string' || !importierteKriterien[0].hasOwnProperty('gewicht'))) {
              importierteKriterien = importierteKriterien.map(k => (typeof k === 'string' ? { text: k, gewicht: 1 } : { ...k, gewicht: k.gewicht || 1 }));
         }
 
+        if (importierteKriterien) {
+            zielKriterien.length = 0;
+            Array.prototype.push.apply(zielKriterien, importierteKriterien);
+        }
 
-        zielKriterien.length = 0;
-        abstufungen.length = 0;
-        Array.prototype.push.apply(zielKriterien, importierteKriterien || []);
-        Array.prototype.push.apply(abstufungen, vorlage.abstufungen || []);
+        // Handle Teacher Gradations
+        if (vorlage.abstufungen) {
+            abstufungen.length = 0;
+            Array.prototype.push.apply(abstufungen, vorlage.abstufungen);
+        }
 
+        // Handle Self-Reflection Criteria
+        if (vorlage.kriterienSelbstreflexion) {
+            let zielKriterienReflexion = fach?.kriterienSelbstreflexion;
+            if (!zielKriterienReflexion) {
+                 if (fach) {
+                     fach.kriterienSelbstreflexion = [];
+                     zielKriterienReflexion = fach.kriterienSelbstreflexion;
+                 } else {
+                     zielKriterienReflexion = kriterienSelbstreflexionGlobal;
+                 }
+            }
+            zielKriterienReflexion.length = 0;
+            Array.prototype.push.apply(zielKriterienReflexion, vorlage.kriterienSelbstreflexion);
+        } else if (importierteKriterien) {
+            // If template has NO self-reflection criteria, but HAS teacher criteria,
+            // we copy the teacher criteria to self-reflection (as a default reset).
+             let zielKriterienReflexion = fach?.kriterienSelbstreflexion;
+             if (!zielKriterienReflexion) {
+                 if (fach) {
+                     fach.kriterienSelbstreflexion = [];
+                     zielKriterienReflexion = fach.kriterienSelbstreflexion;
+                 } else {
+                     zielKriterienReflexion = kriterienSelbstreflexionGlobal;
+                 }
+             }
+             // Clone the imported teacher criteria
+             const clonedKriterien = importierteKriterien.map(k => (typeof k === 'string' ? { text: k, gewicht: 1 } : { ...k }));
+             zielKriterienReflexion.length = 0;
+             Array.prototype.push.apply(zielKriterienReflexion, clonedKriterien);
+        }
+
+        // Handle Self-Reflection Gradations
+        if (vorlage.abstufungenSelbstreflexion) {
+            abstufungenSelbstreflexion.length = 0;
+            Array.prototype.push.apply(abstufungenSelbstreflexion, vorlage.abstufungenSelbstreflexion);
+        }
 
         updateKriterienInput(); // Aktualisiert die Anzeige für die Kriterien
-        renderAbstufungenTags();
+        updateAbstufungenInput();
 
         if (aktuellerSchuelerName) {
             rasterErstellenBtn.click(); // Um das Raster und die Bewertungen zu aktualisieren
