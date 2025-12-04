@@ -497,3 +497,27 @@ h1, h2, h3, h4, h5, h6 {
 .hidden {
     display: none;
 }
+
+/* --- Reflection Indicator --- */
+.reflection-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    font-size: 14px;
+    color: #9ca3af;
+    cursor: pointer;
+    margin-left: 6px;
+    transition: color 0.2s, transform 0.2s;
+    user-select: none;
+}
+
+.reflection-indicator:hover {
+    color: #6b7280;
+    transform: scale(1.1);
+}
+
+.reflection-indicator.active {
+    color: #f59e0b; /* Amber/Yellow for Star */
+}
