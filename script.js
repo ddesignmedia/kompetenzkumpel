@@ -754,6 +754,7 @@ document.addEventListener('DOMContentLoaded', function () {
         renderSchuelerTabs();
         erstelleRaster();
         updateAuswertung();
+        updateExportSelects();
     }
 
     saveStateBtn.addEventListener('click', () => {
@@ -877,7 +878,9 @@ document.addEventListener('DOMContentLoaded', function () {
             exportKlasseSelect.appendChild(option);
         });
 
-        if (ausgewaehlteKlasse && klassenNamen.includes(ausgewaehlteKlasse)) {
+        if (aktuelleKlasse && klassenNamen.includes(aktuelleKlasse)) {
+            exportKlasseSelect.value = aktuelleKlasse;
+        } else if (ausgewaehlteKlasse && klassenNamen.includes(ausgewaehlteKlasse)) {
             exportKlasseSelect.value = ausgewaehlteKlasse;
         }
 
@@ -899,6 +902,10 @@ document.addEventListener('DOMContentLoaded', function () {
             option.textContent = name;
             exportFachSelect.appendChild(option);
         });
+
+        if (klasseName === aktuelleKlasse && aktuellesFach && faecherNamen.includes(aktuellesFach)) {
+            exportFachSelect.value = aktuellesFach;
+        }
     }
 
     exportKlasseSelect.addEventListener('change', updateExportFachSelect);
